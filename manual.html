@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>老師使用手冊 · PAS English Lab</title>
+  <style>
+    :root { --primary:#00c46a; --bg:#0f1216; --card:#1b1f27; --card2:#242a34; --text:#e6ebf2; --muted:#98a2b3; --line:#333b47; --warn:#f6ad55; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text);
+      font-family:"Segoe UI",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+      line-height:1.75; }
+    .wrap { max-width:820px; margin:0 auto; padding:32px 20px 80px; }
+    header.top { text-align:center; margin-bottom:8px; }
+    .brand { letter-spacing:3px; color:var(--muted); font-size:12px; }
+    h1 { font-size:30px; margin:6px 0 2px; }
+    .sub { color:var(--muted); margin-top:0; }
+    .toolbar { display:flex; gap:10px; justify-content:center; margin:18px 0 26px; flex-wrap:wrap; }
+    .btn { background:var(--primary); color:#04120a; border:none; border-radius:10px; padding:10px 18px;
+      font-weight:700; font-size:15px; cursor:pointer; text-decoration:none; display:inline-block; }
+    .btn.ghost { background:var(--card2); color:var(--text); border:1px solid var(--line); }
+    .links { display:grid; gap:10px; grid-template-columns:1fr; margin-bottom:26px; }
+    .linkrow { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+    .linkrow b { display:block; font-size:15px; }
+    .linkrow a { color:var(--primary); word-break:break-all; }
+    .linkrow small { color:var(--muted); }
+    section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px; margin-bottom:20px; }
+    section h2 { font-size:21px; margin:0 0 6px; display:flex; align-items:center; gap:10px; }
+    section h2 .n { background:var(--primary); color:#04120a; width:30px; height:30px; border-radius:50%;
+      display:inline-flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; flex:none; }
+    h3 { font-size:16px; margin:18px 0 6px; color:var(--primary); }
+    ol, ul { padding-left:22px; margin:8px 0; }
+    li { margin:5px 0; }
+    .kbd { background:var(--card2); border:1px solid var(--line); border-radius:6px; padding:1px 8px; font-weight:700; white-space:nowrap; }
+    .tag { display:inline-block; background:var(--card2); border:1px solid var(--line); border-radius:20px;
+      padding:2px 10px; font-size:13px; margin:2px 2px; }
+    .callout { border-left:4px solid var(--primary); background:rgba(0,196,106,.08); padding:12px 16px; border-radius:8px; margin:12px 0; }
+    .callout.warn { border-left-color:var(--warn); background:rgba(246,173,85,.10); }
+    .muted { color:var(--muted); }
+    table { width:100%; border-collapse:collapse; margin:10px 0; font-size:15px; }
+    th,td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--muted); font-weight:700; }
+    .step { background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:8px 0; }
+    footer { text-align:center; color:var(--muted); font-size:13px; margin-top:30px; }
+    a { color:var(--primary); }
+    @media print {
+      body { background:#fff; color:#111; }
+      .wrap { max-width:100%; padding:0; }
+      .toolbar { display:none; }
+      section, .linkrow, .step, .callout { border-color:#ccc; background:#fff !important; -webkit-print-color-adjust:exact; break-inside:avoid; }
+      section h2 .n { background:#111; color:#fff; }
+      h2, h3 { color:#111; }
+      a { color:#111; }
+      .callout { border-left-color:#111; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">PAS ENGLISH LAB</div>
+    <h1>老師使用手冊</h1>
+    <p class="sub">英語跟讀（Shadowing）錄音系統 · 給老師的操作指南</p>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn" onclick="window.print()">🖨 列印 / 存成 PDF</button>
+    <a class="btn ghost" href="admin.html">前往老師後台 →</a>
+    <a class="btn ghost" href="index.html">前往學生首頁 →</a>
+  </div>
+
+  <div class="links">
+    <div class="linkrow"><b>👩‍🎓 學生用（發給學生）</b><a href="https://vickychien1688.github.io/lab/">https://vickychien1688.github.io/lab/</a></div>
+    <div class="linkrow"><b>👩‍🏫 老師後台</b><a href="https://vickychien1688.github.io/lab/admin.html">https://vickychien1688.github.io/lab/admin.html</a><br><small>預設密碼 1234，第一次進去請立刻改。</small></div>
+  </div>
+
+  <section>
+    <h2><span class="n">1</span>這個系統在做什麼</h2>
+    <p>學生打開網頁，一邊聽老師的示範音檔、一邊朗讀，系統會把「老師示範＋學生的聲音」<b>混音錄下來</b>並上傳給你。你在後台可以聽每個學生的錄音、打分數、看誰交了、管理課文與音檔。</p>
+    <p class="muted">全部免費、免安裝：學生用手機或電腦瀏覽器就能用；你用有網路的裝置登入後台即可。</p>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>學生怎麼用（可印給學生看）</h2>
+    <ol>
+      <li>打開學生網址，選自己的<b>班級</b>。</li>
+      <li>上方選<b>課次</b>，輸入<b>自己的名字</b>。</li>
+      <li>按 <span class="kbd">🔴 START</span> → 聽到老師示範就跟著唸；一般模式會連續播放，逐句模式會「播一句→留空白換你唸→下一句」。</li>
+      <li>結束按 <span class="kbd">⏹ STOP</span>，可先試聽。</li>
+      <li>沒問題按 <span class="kbd">📤 SEND TO TEACHER</span> 送出，看到「✅ 已送出」就完成。</li>
+    </ol>
+    <div class="callout">第一次會跳出「要求使用麥克風」，請按<b>允許</b>，否則錄不到聲音。建議用耳機，混音效果最好。</div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span>老師登入後台</h2>
+    <ol>
+      <li>打開老師後台網址。</li>
+      <li>輸入密碼（預設 <span class="kbd">1234</span>）按登入。</li>
+      <li>進去後有五個分頁：<span class="tag">🎧 學生錄音</span><span class="tag">👤 學生繳交</span><span class="tag">📊 統計</span><span class="tag">📚 課程管理</span><span class="tag">⚙️ 設定</span></li>
+    </ol>
+    <div class="callout warn">第一次登入請到 <b>⚙️ 設定</b> 把密碼從 1234 改掉。</div>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span>管理課程（📚 課程管理）</h2>
+    <h3>新增班級</h3>
+    <ol>
+      <li>按 <b>＋ 新增班級</b>。</li>
+      <li>填<b>班級ID</b>（例 G9，建立後別改）、<b>班級名稱</b>、<b>書名/主題</b>，按儲存。</li>
+    </ol>
+    <h3>新增 / 編輯課文</h3>
+    <ol>
+      <li>按 <b>＋ 新增課文</b>（或既有課文按<b>編輯</b>）。</li>
+      <li>選班級、填<b>課次ID</b>（例 ch1）、<b>顯示標題</b>、貼上<b>課文</b>。</li>
+      <li>設定<b>示範音檔</b>（見下一段）。</li>
+      <li><b>顯示給學生</b>選「是」，按儲存。</li>
+    </ol>
+    <h3>示範音檔：兩種方式（擇一）</h3>
+    <div class="step"><b>方式 A（推薦）· 直接上傳</b><br>在「示範音檔」按 <b>選擇檔案</b>，挑你電腦硬碟裡的 mp3／m4a，看到「✅ 已上傳」後，記得按最下面<b>儲存</b>才生效。檔案會存進你的 Google 雲端硬碟。</div>
+    <div class="step"><b>方式 B · 貼網址</b><br>在網址欄貼音檔連結（放在系統同一個 repo 的相對路徑，或完整 https 網址）。</div>
+    <div class="callout">改課文、換音檔都在這裡完成，<b>不需要改任何程式碼</b>。</div>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span>⭐ 設定「逐句交錯跟讀」</h2>
+    <p>想讓學生一句一句跟讀（播一句 → 留空白錄音 → 下一句），在編輯課文時：</p>
+    <ol>
+      <li>先設好<b>示範音檔</b>（上傳或貼網址）。</li>
+      <li>勾選 <b>🎧 開啟逐句交錯跟讀</b>。</li>
+      <li>按 <b>▶ 播放</b> 聽音檔，<b>每聽完一句就按一次「✂ 在這裡分句」</b> —— 停頓位置<b>完全由你決定</b>，點在哪就斷在哪。</li>
+      <li>標好的分句點會列成 <span class="tag">1. 0:03</span><span class="tag">2. 0:08</span>…，可單獨 ✕ 刪或全部清除。</li>
+      <li>設<b>空白倍數</b>：空白時間 = 該句長度 × 倍數。程度較弱的班級調高（例 2.0），程度好的調低（例 1.2）。</li>
+      <li>按<b>儲存</b>。</li>
+    </ol>
+    <div class="callout">同一課文可存不同版本給不同班級（例如 G7A、G7B 各建一課，倍數不同）；不勾選就是原本的連續播放。</div>
+  </section>
+
+  <section>
+    <h2><span class="n">6</span>聽錄音、打分數（🎧 學生錄音）</h2>
+    <ol>
+      <li>可用<b>班級 / 課次 / 姓名</b>篩選。</li>
+      <li>按 <b>▶ 播放</b> 線上聽學生錄音；播放器旁有 <b>⬇ 下載</b>。</li>
+      <li>按 <b>✍ 評分</b> 填分數（0–100）與評語，儲存後狀態變「已評」。</li>
+      <li>不要的可按 <b>🗑</b> 刪除（含雲端檔案）。</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><span class="n">7</span>看繳交狀況與統計</h2>
+    <table>
+      <tr><th>想看什麼</th><th>去哪個分頁</th></tr>
+      <tr><td>誰交了、交了幾次、交了哪些課</td><td>👤 學生繳交</td></tr>
+      <tr><td>總繳交數、學生人數、已/待評、各課平均分</td><td>📊 統計</td></tr>
+    </table>
+    <p class="muted">想匯出成績：打開你 Google 雲端的「PAS English Lab DB」試算表，<b>Submissions</b> 分頁就是全部紀錄，可用 Google 內建功能匯出 Excel。</p>
+  </section>
+
+  <section>
+    <h2><span class="n">8</span>改密碼 / 資料放哪（⚙️ 設定）</h2>
+    <ul>
+      <li><b>改後台密碼</b>：⚙️ 設定 → 輸入新密碼兩次 → 更新。</li>
+      <li><b>學生錄音檔</b>：存在你 Google 雲端硬碟的「PAS English Lab Recordings」資料夾。</li>
+      <li><b>上傳的示範音檔</b>：存在「PAS English Lab Lesson Audio」資料夾。</li>
+      <li><b>所有清單資料</b>：在「PAS English Lab DB」試算表。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="n">9</span>常見問題</h2>
+    <h3>學生說錄不到聲音 / 沒有老師的示範</h3>
+    <ul>
+      <li>確認學生按了麥克風「允許」。</li>
+      <li>用<b>方式 A 上傳</b>或把 mp3 放在系統同網域最穩；貼外部網址若不支援跨網域，老師示範會錄不進去。</li>
+    </ul>
+    <h3>逐句跟讀停頓怪怪的</h3>
+    <p>回編輯課文，重新播放、重點分句點；或調整空白倍數。分句點位置由你決定，可隨時改。</p>
+    <h3>送出失敗</h3>
+    <p>多半是網路或麥克風權限問題，請學生重新整理、確認允許麥克風後再試。</p>
+  </section>
+
+  <footer>
+    PAS English Lab · 老師使用手冊　|　需要新增功能或調整，請聯絡系統管理者。
+  </footer>
+</div>
+</body>
+</html>
