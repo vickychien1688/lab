@@ -80,26 +80,79 @@
         cancelAnimationFrame(animationId);
       };
 
-      tAudio.currentTime = 0;
-      tAudio.play();
       recorder.start();
       recStartMs = Date.now();
-
       el('startBtn').disabled = true;
       el('stopBtn').disabled = false;
-      el('status').innerText = 'RECORDING…';
+
+      const l = currentLesson();
+      const marks = parseMarks(l.marks);
+      const shadow = String(l.shadowMode).toLowerCase() === 'yes' && marks.length > 0;
+      if (shadow) {
+        runShadow(tAudio, marks, parseFloat(l.gapMultiplier) || 1.5);
+      } else {
+        tAudio.currentTime = 0;
+        tAudio.play();
+        el('status').innerText = 'RECORDING…';
+      }
     } catch (e) {
       alert('麥克風錯誤 Mic Error: ' + (e.message || e));
     }
   };
 
-  el('stopBtn').onclick = () => {
+  el('stopBtn').onclick = () => stopRecording('DONE — 可試聽後送出');
+
+  function stopRecording(msg) {
+    shadowAbort = true;
+    if (shadowTimer) { clearTimeout(shadowTimer); shadowTimer = null; }
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     el('teacherAudio').pause();
     el('startBtn').disabled = false;
     el('stopBtn').disabled = true;
-    el('status').innerText = 'DONE — 可試聽後送出';
-  };
+    el('status').innerText = msg || 'DONE';
+  }
+
+  // ---- 逐句交錯跟讀：依老師標記的「分句點」，播一句→留空白→下一句 ----
+  let shadowAbort = false, shadowTimer = null;
+  function parseMarks(s) {
+    return String(s || '').split(',').map(x => parseFloat(x.trim()))
+      .filter(x => !isNaN(x) && x > 0).sort((a, b) => a - b);
+  }
+  async function runShadow(a, marks, mult) {
+    shadowAbort = false;
+    let start = 0;
+    for (let i = 0; i < marks.length; i++) {
+      if (shadowAbort) return;
+      const end = marks[i];
+      el('status').innerText = `▶ 播放第 ${i + 1}/${marks.length} 句…`;
+      await playSeg(a, start, end);
+      if (shadowAbort) return;
+      const gap = Math.max((end - start) * mult, 0.8);
+      el('status').innerText = `🎤 換你唸！(${i + 1}/${marks.length})`;
+      await sleep(gap * 1000);
+      start = end;
+    }
+    if (!shadowAbort) stopRecording('✅ 完成 — 可試聽後送出');
+  }
+  function playSeg(a, start, end) {
+    return new Promise(res => {
+      let done = false;
+      const finish = () => {
+        if (done) return; done = true;
+        a.pause();
+        a.removeEventListener('timeupdate', onTime);
+        a.removeEventListener('ended', finish);
+        res();
+      };
+      const onTime = () => { if (shadowAbort || a.currentTime >= end - 0.03) finish(); };
+      a.addEventListener('timeupdate', onTime);
+      a.addEventListener('ended', finish);
+      a.currentTime = start;
+      const p = a.play();
+      if (p && p.catch) p.catch(() => finish());
+    });
+  }
+  function sleep(ms) { return new Promise(r => { shadowTimer = setTimeout(r, ms); }); }
 
   el('uploadBtn').onclick = async () => {
     const btn = el('uploadBtn');

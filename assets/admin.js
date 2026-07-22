@@ -1,6 +1,7 @@
 /* 老師後台邏輯 */
 let PW = sessionStorage.getItem('pas_pw') || '';
 let DB = { classes: [], lessons: [], submissions: [], stats: [] };
+let EDIT_MARKS = []; // 課文編輯中的分句點（秒）
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -168,7 +169,7 @@ function renderLessons() {
     ${DB.lessons.map(l => `<tr>
       <td>${esc(l.classId)}</td><td>${esc(l.lessonId)}</td><td>${esc(l.lessonLabel)}</td>
       <td>${esc(String(l.text).slice(0, 30))}…</td>
-      <td>${l.audioUrl ? '🎵' : '—'}</td>
+      <td>${l.audioUrl ? '🎵' : '—'}${String(l.shadowMode).toLowerCase() === 'yes' ? ' 🎧逐句' : ''}</td>
       <td>${String(l.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick='editLesson(${JSON.stringify(l)})'>編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delLesson('${esc(l.classId)}','${esc(l.lessonId)}')">🗑</button></td>
@@ -206,7 +207,9 @@ async function delClass(id) {
 }
 
 function editLesson(l) {
-  l = l || { classId: '', lessonId: '', lessonLabel: '', text: '', audioUrl: '', order: 99, active: 'yes' };
+  l = l || { classId: '', lessonId: '', lessonLabel: '', text: '', audioUrl: '', order: 99, active: 'yes', shadowMode: 'no', marks: '', gapMultiplier: '1.5' };
+  EDIT_MARKS = parseMarkStr(l.marks);
+  const shadowOn = String(l.shadowMode).toLowerCase() === 'yes';
   const opts = DB.classes.map(c => `<option value="${esc(c.classId)}" ${c.classId === l.classId ? 'selected' : ''}>${esc(c.className || c.classId)}</option>`).join('');
   openModal(`
     <div class="title-badge">${l.lessonId && l.classId ? '編輯' : '新增'}課文</div>
@@ -217,23 +220,84 @@ function editLesson(l) {
     <label class="fld">顯示標題（例：CH1）</label><input id="lLabel" value="${esc(l.lessonLabel)}">
     <label class="fld">課文</label><textarea id="lText">${esc(l.text)}</textarea>
     <label class="fld">示範音檔網址（同網域相對路徑如 G7/g7_ch1.mp3，或完整 https 網址）</label>
-    <input id="lAudio" value="${esc(l.audioUrl)}">
+    <input id="lAudio" value="${esc(l.audioUrl)}" onblur="reloadMarkAudio()">
     <div class="grid2">
       <div><label class="fld">排序</label><input id="lOrder" type="number" value="${esc(l.order || 99)}"></div>
       <div><label class="fld">顯示給學生</label>
         <select id="lActive"><option value="yes" ${l.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${l.active === 'no' ? 'selected' : ''}>否</option></select></div>
     </div>
-    <p class="hint">⚠ 外部音檔網址需支援 CORS，否則混音錄不進老師聲音；建議把 mp3 放進同個 repo 用相對路徑最穩。</p>
+
+    <div style="border-top:1px solid var(--line); margin-top:16px; padding-top:12px">
+      <label class="fld" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:0 0 6px">
+        <input type="checkbox" id="lShadow" ${shadowOn ? 'checked' : ''} onchange="toggleShadow()" style="width:auto"> 🎧 開啟逐句交錯跟讀（播一句 → 留空白給學生錄音 → 下一句）
+      </label>
+      <div id="shadowBox" class="${shadowOn ? '' : 'hidden'}" style="background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:14px">
+        <p class="hint">① 按 ▶ 播放音檔，<b>每聽完一句就按一次「✂ 在這裡分句」</b> — 停頓位置完全由你決定。<br>② 空白時間 = 該句長度 × 下方倍數（程度較弱的班級可調高）。</p>
+        <audio id="markAudio" controls style="width:100%; margin:6px 0"></audio>
+        <div class="row" style="gap:8px; flex-wrap:wrap">
+          <button type="button" class="btn btn-primary btn-sm" onclick="addMark()">✂ 在這裡分句</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="undoMark()">↩ 復原</button>
+          <button type="button" class="btn btn-danger btn-sm" onclick="clearMarks()">🗑 清除</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="reloadMarkAudio()">🔄 重新載入音檔</button>
+        </div>
+        <div id="markList" style="margin-top:10px"></div>
+        <label class="fld">空白倍數（數字越大空白越久，例：1.5）</label>
+        <input id="lGapMult" type="number" step="0.1" min="0.2" value="${esc(l.gapMultiplier || '1.5')}" style="max-width:140px">
+      </div>
+    </div>
+
+    <p class="hint" style="margin-top:12px">⚠ 外部音檔網址需支援 CORS，否則混音錄不進老師聲音；建議把 mp3 放進同個 repo 用相對路徑最穩。</p>
     <div style="height:10px"></div>
     <div class="row"><button class="btn btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn btn-primary" onclick="saveLesson()">儲存</button></div>`);
+  reloadMarkAudio();
+  renderMarks();
+}
+
+// ---- 分句標記工具 ----
+function parseMarkStr(s) {
+  return String(s || '').split(',').map(x => parseFloat(x.trim()))
+    .filter(x => !isNaN(x) && x > 0).sort((a, b) => a - b);
+}
+function toggleShadow() {
+  const on = $('lShadow').checked;
+  $('shadowBox').classList.toggle('hidden', !on);
+  if (on) reloadMarkAudio();
+}
+function reloadMarkAudio() {
+  const a = $('markAudio'); if (!a) return;
+  const src = ($('lAudio').value || '').trim();
+  if (src) { a.src = src; a.load(); }
+}
+function addMark() {
+  const a = $('markAudio');
+  if (!a || !a.duration) return alert('請先按 ▶ 播放音檔，再標記分句點');
+  const t = Math.round(a.currentTime * 100) / 100;
+  if (t <= 0) return;
+  EDIT_MARKS.push(t);
+  EDIT_MARKS = [...new Set(EDIT_MARKS)].sort((x, y) => x - y);
+  renderMarks();
+}
+function undoMark() { EDIT_MARKS.pop(); renderMarks(); }
+function removeMark(i) { EDIT_MARKS.splice(i, 1); renderMarks(); }
+function clearMarks() { if (confirm('清除所有分句點？')) { EDIT_MARKS = []; renderMarks(); } }
+function fmtT(s) { const m = Math.floor(s / 60), ss = s % 60; return m + ':' + (ss < 10 ? '0' : '') + ss.toFixed(1); }
+function renderMarks() {
+  const box = $('markList'); if (!box) return;
+  if (!EDIT_MARKS.length) { box.innerHTML = '<span class="hint">尚無分句點。播放後按「✂ 在這裡分句」。</span>'; return; }
+  box.innerHTML = '<span class="hint">共 ' + EDIT_MARKS.length + ' 句停頓：</span> ' +
+    EDIT_MARKS.map((t, i) => `<span class="pill reviewed" style="margin:3px; display:inline-block">${i + 1}. ${fmtT(t)} <a onclick="removeMark(${i})" style="cursor:pointer;color:var(--danger);font-weight:700">✕</a></span>`).join('');
 }
 async function saveLesson() {
   const classId = $('lClass').value, lessonId = $('lId').value.trim();
   if (!classId || !lessonId) return alert('請選班級並填課次ID');
+  const shadowOn = $('lShadow') && $('lShadow').checked;
   const r = await apiCall({ action: 'saveLesson', password: PW, classId, lessonId,
     lessonLabel: $('lLabel').value, text: $('lText').value, audioUrl: $('lAudio').value,
-    order: $('lOrder').value, active: $('lActive').value });
+    order: $('lOrder').value, active: $('lActive').value,
+    shadowMode: shadowOn ? 'yes' : 'no',
+    marks: EDIT_MARKS.join(','),
+    gapMultiplier: ($('lGapMult') && $('lGapMult').value) || '1.5' });
   if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
 }
 async function delLesson(classId, lessonId) {

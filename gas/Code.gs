@@ -42,8 +42,8 @@ function setup() {
   ]);
 
   var lessons = ss.insertSheet('Lessons');
-  lessons.getRange(1, 1, 1, 7).setValues([
-    ['classId', 'lessonId', 'lessonLabel', 'text', 'audioUrl', 'order', 'active']
+  lessons.getRange(1, 1, 1, 10).setValues([
+    ['classId', 'lessonId', 'lessonLabel', 'text', 'audioUrl', 'order', 'active', 'shadowMode', 'marks', 'gapMultiplier']
   ]);
   lessons.getRange(2, 1, 3, 7).setValues([
     ['G7', 'ch1', 'CH1',
@@ -231,6 +231,7 @@ function saveClass(d) {
 }
 function saveLesson(d) {
   // Lessons 用 classId+lessonId 當複合鍵
+  ensureLessonColumns();
   var ss = getSS(), sh = ss.getSheetByName('Lessons');
   var data = sh.getDataRange().getValues(), head = data[0];
   var iC = head.indexOf('classId'), iL = head.indexOf('lessonId');
@@ -245,8 +246,18 @@ function saveLesson(d) {
 function lessonObj(d) {
   return {
     classId: d.classId, lessonId: d.lessonId, lessonLabel: d.lessonLabel || d.lessonId,
-    text: d.text || '', audioUrl: d.audioUrl || '', order: d.order || 99, active: d.active || 'yes'
+    text: d.text || '', audioUrl: d.audioUrl || '', order: d.order || 99, active: d.active || 'yes',
+    shadowMode: d.shadowMode || 'no', marks: d.marks || '', gapMultiplier: d.gapMultiplier || ''
   };
+}
+// 讓既有的 Lessons 分頁補上跟讀相關欄位（升級用）
+function ensureLessonColumns() {
+  var sh = getSS().getSheetByName('Lessons');
+  var lastCol = sh.getLastColumn();
+  var head = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  ['shadowMode', 'marks', 'gapMultiplier'].forEach(function (col) {
+    if (head.indexOf(col) === -1) { lastCol++; sh.getRange(1, lastCol).setValue(col); head.push(col); }
+  });
 }
 function deleteLesson(d) {
   var ss = getSS(), sh = ss.getSheetByName('Lessons');
