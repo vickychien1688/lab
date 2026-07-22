@@ -42,8 +42,8 @@ function setup() {
   ]);
 
   var lessons = ss.insertSheet('Lessons');
-  lessons.getRange(1, 1, 1, 10).setValues([
-    ['classId', 'lessonId', 'lessonLabel', 'text', 'audioUrl', 'order', 'active', 'shadowMode', 'marks', 'gapMultiplier']
+  lessons.getRange(1, 1, 1, 11).setValues([
+    ['classId', 'lessonId', 'lessonLabel', 'text', 'audioUrl', 'order', 'active', 'shadowMode', 'marks', 'gapMultiplier', 'audioFileId']
   ]);
   lessons.getRange(2, 1, 3, 7).setValues([
     ['G7', 'ch1', 'CH1',
@@ -98,8 +98,10 @@ function route(d) {
       case 'ping':       return json({ ok: true, service: 'PAS English Lab' });
       case 'classes':    return json({ ok: true, classes: getClasses(true) });
       case 'lessons':    return json({ ok: true, lessons: getLessons(d.classId, true) });
+      case 'lessonAudio':return json(lessonAudio(d));
       case 'submit':     return json(saveSubmission(d));
       // ---- 以下需要密碼 ----
+      case 'uploadAudio':return needAuth(d) || json(uploadAudio(d));
       case 'adminData':  return needAuth(d) || json(adminData());
       case 'getAudio':   return needAuth(d) || json(getAudio(d.fileId));
       case 'saveClass':  return needAuth(d) || json(saveClass(d));
@@ -247,7 +249,8 @@ function lessonObj(d) {
   return {
     classId: d.classId, lessonId: d.lessonId, lessonLabel: d.lessonLabel || d.lessonId,
     text: d.text || '', audioUrl: d.audioUrl || '', order: d.order || 99, active: d.active || 'yes',
-    shadowMode: d.shadowMode || 'no', marks: d.marks || '', gapMultiplier: d.gapMultiplier || ''
+    shadowMode: d.shadowMode || 'no', marks: d.marks || '', gapMultiplier: d.gapMultiplier || '',
+    audioFileId: d.audioFileId || ''
   };
 }
 // 讓既有的 Lessons 分頁補上跟讀相關欄位（升級用）
@@ -255,9 +258,35 @@ function ensureLessonColumns() {
   var sh = getSS().getSheetByName('Lessons');
   var lastCol = sh.getLastColumn();
   var head = sh.getRange(1, 1, 1, lastCol).getValues()[0];
-  ['shadowMode', 'marks', 'gapMultiplier'].forEach(function (col) {
+  ['shadowMode', 'marks', 'gapMultiplier', 'audioFileId'].forEach(function (col) {
     if (head.indexOf(col) === -1) { lastCol++; sh.getRange(1, lastCol).setValue(col); head.push(col); }
   });
+}
+
+// ---- 老師示範音檔：上傳到 Drive / 以資料流取回（避開跨網域混音問題）----
+function getAudioFolder() {
+  var id = PROP.getProperty('AUDIO_FOLDER_ID');
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
+  var f = DriveApp.createFolder('PAS English Lab Lesson Audio');
+  PROP.setProperty('AUDIO_FOLDER_ID', f.getId());
+  return f;
+}
+function uploadAudio(d) {
+  if (!d.audio) return { ok: false, error: '沒有音檔資料' };
+  var mime = d.mime || 'audio/mpeg';
+  var base = (d.filename || 'lesson_audio').toString().replace(/[\\/:*?"<>|]/g, '_');
+  var bytes = Utilities.base64Decode(d.audio);
+  var blob = Utilities.newBlob(bytes, mime, base);
+  var file = getAudioFolder().createFile(blob);
+  return { ok: true, fileId: file.getId(), fileName: file.getName() };
+}
+function lessonAudio(d) {
+  if (!d.fileId) return { ok: false, error: 'no fileId' };
+  var used = readSheet('Lessons').some(function (l) { return String(l.audioFileId) === String(d.fileId); });
+  if (!used) return { ok: false, error: 'not a lesson audio' };
+  var file = DriveApp.getFileById(d.fileId);
+  var blob = file.getBlob();
+  return { ok: true, mime: blob.getContentType(), base64: Utilities.base64Encode(blob.getBytes()) };
 }
 function deleteLesson(d) {
   var ss = getSS(), sh = ss.getSheetByName('Lessons');

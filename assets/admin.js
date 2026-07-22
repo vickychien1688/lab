@@ -169,7 +169,7 @@ function renderLessons() {
     ${DB.lessons.map(l => `<tr>
       <td>${esc(l.classId)}</td><td>${esc(l.lessonId)}</td><td>${esc(l.lessonLabel)}</td>
       <td>${esc(String(l.text).slice(0, 30))}…</td>
-      <td>${l.audioUrl ? '🎵' : '—'}${String(l.shadowMode).toLowerCase() === 'yes' ? ' 🎧逐句' : ''}</td>
+      <td>${(l.audioUrl || l.audioFileId) ? '🎵' : '—'}${String(l.shadowMode).toLowerCase() === 'yes' ? ' 🎧逐句' : ''}</td>
       <td>${String(l.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick='editLesson(${JSON.stringify(l)})'>編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delLesson('${esc(l.classId)}','${esc(l.lessonId)}')">🗑</button></td>
@@ -207,7 +207,7 @@ async function delClass(id) {
 }
 
 function editLesson(l) {
-  l = l || { classId: '', lessonId: '', lessonLabel: '', text: '', audioUrl: '', order: 99, active: 'yes', shadowMode: 'no', marks: '', gapMultiplier: '1.5' };
+  l = l || { classId: '', lessonId: '', lessonLabel: '', text: '', audioUrl: '', order: 99, active: 'yes', shadowMode: 'no', marks: '', gapMultiplier: '1.5', audioFileId: '' };
   EDIT_MARKS = parseMarkStr(l.marks);
   const shadowOn = String(l.shadowMode).toLowerCase() === 'yes';
   const opts = DB.classes.map(c => `<option value="${esc(c.classId)}" ${c.classId === l.classId ? 'selected' : ''}>${esc(c.className || c.classId)}</option>`).join('');
@@ -219,8 +219,11 @@ function editLesson(l) {
     </div>
     <label class="fld">顯示標題（例：CH1）</label><input id="lLabel" value="${esc(l.lessonLabel)}">
     <label class="fld">課文</label><textarea id="lText">${esc(l.text)}</textarea>
-    <label class="fld">示範音檔網址（同網域相對路徑如 G7/g7_ch1.mp3，或完整 https 網址）</label>
-    <input id="lAudio" value="${esc(l.audioUrl)}" onblur="reloadMarkAudio()">
+    <label class="fld">示範音檔（擇一即可）</label>
+    <input type="file" id="lAudioFile" accept="audio/*" onchange="uploadAudioFile()" style="padding:8px">
+    <input type="hidden" id="lAudioFileId" value="${esc(l.audioFileId || '')}">
+    <div id="audioStatus" class="hint" style="margin:6px 0">${l.audioFileId ? '✅ 已有上傳的音檔（可直接用，或重新上傳覆蓋）' : '從電腦選 mp3/m4a 直接上傳；或改用下面的網址。'}</div>
+    <input id="lAudio" value="${esc(l.audioUrl)}" onblur="reloadMarkAudio()" placeholder="或貼音檔網址（相對路徑 G7/x.mp3 或 https://…）">
     <div class="grid2">
       <div><label class="fld">排序</label><input id="lOrder" type="number" value="${esc(l.order || 99)}"></div>
       <div><label class="fld">顯示給學生</label>
@@ -264,10 +267,46 @@ function toggleShadow() {
   $('shadowBox').classList.toggle('hidden', !on);
   if (on) reloadMarkAudio();
 }
-function reloadMarkAudio() {
+async function reloadMarkAudio() {
   const a = $('markAudio'); if (!a) return;
+  // 1) 若剛選了本機檔案，直接用它（最即時）
+  const inp = $('lAudioFile');
+  if (inp && inp.files && inp.files[0]) { a.src = URL.createObjectURL(inp.files[0]); a.load(); return; }
+  // 2) 已上傳的音檔：向後端要回來
+  const fid = ($('lAudioFileId') && $('lAudioFileId').value || '').trim();
+  if (fid) {
+    try {
+      const r = await apiCall({ action: 'lessonAudio', fileId: fid });
+      if (r.ok) { a.src = 'data:' + r.mime + ';base64,' + r.base64; a.load(); return; }
+    } catch (e) {}
+  }
+  // 3) 退回音檔網址
   const src = ($('lAudio').value || '').trim();
   if (src) { a.src = src; a.load(); }
+}
+async function uploadAudioFile() {
+  const inp = $('lAudioFile');
+  if (!inp || !inp.files || !inp.files[0]) return;
+  const file = inp.files[0];
+  $('audioStatus').innerText = '上傳中…（' + file.name + '）請稍候';
+  try {
+    const base64 = await fileToBase64(file);
+    const r = await apiCall({ action: 'uploadAudio', password: PW, audio: base64, mime: file.type || 'audio/mpeg', filename: file.name });
+    if (!r.ok) throw new Error(r.error || 'fail');
+    $('lAudioFileId').value = r.fileId;
+    $('audioStatus').innerText = '✅ 已上傳：' + (r.fileName || file.name) + '（記得按最下面「儲存」才生效）';
+    const a = $('markAudio'); if (a) { a.src = URL.createObjectURL(file); a.load(); } // 立即可用來分句
+  } catch (e) {
+    $('audioStatus').innerText = '❌ 上傳失敗：' + (e.message || e);
+  }
+}
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onloadend = () => resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
 }
 function addMark() {
   const a = $('markAudio');
@@ -294,6 +333,7 @@ async function saveLesson() {
   const shadowOn = $('lShadow') && $('lShadow').checked;
   const r = await apiCall({ action: 'saveLesson', password: PW, classId, lessonId,
     lessonLabel: $('lLabel').value, text: $('lText').value, audioUrl: $('lAudio').value,
+    audioFileId: ($('lAudioFileId') && $('lAudioFileId').value) || '',
     order: $('lOrder').value, active: $('lActive').value,
     shadowMode: shadowOn ? 'yes' : 'no',
     marks: EDIT_MARKS.join(','),
