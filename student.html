@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>錄音教室 · PAS English Lab</title>
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <div class="wrap">
+    <p class="brand">PAS ENGLISH LAB · <a href="index.html" style="color:var(--muted)">← 回首頁</a></p>
+    <div class="card">
+      <div class="title-badge" id="bookTitle">載入中…</div>
+
+      <div class="row">
+        <select id="lessonSelect"></select>
+        <input type="text" id="studentName" placeholder="輸入你的名字 Name">
+      </div>
+
+      <div id="lessonText" class="reading-text">請稍候…</div>
+
+      <div class="visualizer"><canvas id="visualizer"></canvas></div>
+      <audio id="teacherAudio" preload="auto" crossorigin="anonymous" playsinline></audio>
+
+      <div class="btn-grid">
+        <button id="startBtn" class="btn btn-rec">🔴 START</button>
+        <button id="stopBtn" class="btn btn-stop" disabled>⏹ STOP</button>
+        <button id="uploadBtn" class="btn btn-send hidden">📤 SEND TO TEACHER</button>
+      </div>
+      <p id="status" class="status">READY</p>
+      <audio id="audioPlayer" controls class="hidden" playsinline></audio>
+    </div>
+  </div>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/student.js"></script>
+</body>
+</html>

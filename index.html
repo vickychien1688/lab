@@ -1,11 +1,41 @@
-<!DOCTYPE html><html lang="zh-TW"><head>
-    <meta charset="UTF-8">
-    <title>Jackie's English Lab</title>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAS English Lab · 英語跟讀教室</title>
+  <link rel="stylesheet" href="assets/app.css">
 </head>
-<body style="background: #1a1d23; color: white; text-align: center; font-family: sans-serif; padding-top: 100px;">
-    <h1>歡迎來到英語實驗室</h1>
-    <p>請選擇您的班級進入教室：</p>
-    <div style="margin-top: 30px;">
-        <a href="./G8/" style="padding: 15px 40px; background: #00ff88; color: black; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 20px;">進入 G8 錄音教室</a>
+<body>
+  <div class="wrap">
+    <p class="brand">PAS ENGLISH LAB</p>
+    <div class="card">
+      <div class="title-badge">🎧 英語跟讀教室</div>
+      <p class="hint">請選擇你的班級進入錄音教室：</p>
+      <div id="classList" class="class-links">
+        <p class="hint" id="loading">載入班級中…</p>
+      </div>
     </div>
-</body></html>
+    <p style="text-align:center"><a href="admin.html" class="hint">老師後台 →</a></p>
+  </div>
+
+  <script src="assets/config.js"></script>
+  <script>
+    (async () => {
+      const box = document.getElementById('classList');
+      try {
+        const r = await apiCall({ action: 'classes' });
+        if (!r.ok || !r.classes.length) { box.innerHTML = '<p class="hint">尚未建立任何班級，請先到老師後台新增。</p>'; return; }
+        box.innerHTML = r.classes.map(c => `
+          <a class="class-link" href="student.html?class=${encodeURIComponent(c.classId)}">
+            <span><b>${esc(c.className || c.classId)}</b><small>${esc(c.bookTitle || '')}</small></span>
+            <span class="go">進入 →</span>
+          </a>`).join('');
+      } catch (e) {
+        box.innerHTML = '<p class="hint">連線失敗，請確認 config.js 的 API_URL 已設定正確。</p>';
+      }
+    })();
+    function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>老師後台 · PAS English Lab</title>
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <!-- 登入 -->
+  <div class="wrap" id="loginView">
+    <p class="brand">PAS ENGLISH LAB · 後台</p>
+    <div class="card">
+      <div class="title-badge">🔐 老師登入</div>
+      <label class="fld">密碼</label>
+      <input type="password" id="pwInput" placeholder="輸入老師密碼" onkeydown="if(event.key==='Enter')doLogin()">
+      <div style="height:14px"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">登入</button>
+      <p id="loginMsg" class="status"></p>
+    </div>
+    <p style="text-align:center"><a href="index.html" class="hint">← 回學生首頁</a></p>
+  </div>
+
+  <!-- 主控台 -->
+  <div class="wrap-wide hidden" id="adminView">
+    <div class="toolbar">
+      <p class="brand" style="margin:0">PAS ENGLISH LAB · 老師後台</p>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost btn-sm" onclick="refreshAll()">🔄 重新整理</button>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">登出</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="subs" onclick="showTab('subs')">🎧 學生錄音</div>
+      <div class="tab" data-tab="students" onclick="showTab('students')">👤 學生繳交</div>
+      <div class="tab" data-tab="stats" onclick="showTab('stats')">📊 統計</div>
+      <div class="tab" data-tab="lessons" onclick="showTab('lessons')">📚 課程管理</div>
+      <div class="tab" data-tab="settings" onclick="showTab('settings')">⚙️ 設定</div>
+    </div>
+
+    <!-- 學生錄音 -->
+    <div class="card tabpane" id="pane-subs">
+      <div class="toolbar">
+        <select id="fClass" onchange="renderSubs()" style="max-width:180px"><option value="">全部班級</option></select>
+        <select id="fLesson" onchange="renderSubs()" style="max-width:180px"><option value="">全部課次</option></select>
+        <input id="fName" placeholder="搜尋學生姓名" oninput="renderSubs()" style="max-width:200px">
+        <span class="spacer"></span>
+        <span class="hint" id="subCount"></span>
+      </div>
+      <div style="overflow-x:auto"><table id="subsTable"></table></div>
+    </div>
+
+    <!-- 學生繳交狀況 -->
+    <div class="card tabpane hidden" id="pane-students">
+      <p class="hint">依學生彙整繳交狀況（點姓名展開）。</p>
+      <div style="overflow-x:auto"><table id="studentsTable"></table></div>
+    </div>
+
+    <!-- 統計 -->
+    <div class="card tabpane hidden" id="pane-stats">
+      <div class="stat-cards" id="statCards"></div>
+      <h3 style="margin:22px 0 8px;font-size:15px">各課次繳交明細</h3>
+      <div style="overflow-x:auto"><table id="statTable"></table></div>
+    </div>
+
+    <!-- 課程管理 -->
+    <div class="card tabpane hidden" id="pane-lessons">
+      <div class="toolbar">
+        <b>班級</b><span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" onclick="editClass()">＋ 新增班級</button>
+      </div>
+      <div style="overflow-x:auto"><table id="classTable"></table></div>
+      <div class="toolbar" style="margin-top:24px">
+        <b>課文 / 示範音檔</b><span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" onclick="editLesson()">＋ 新增課文</button>
+      </div>
+      <div style="overflow-x:auto"><table id="lessonTable"></table></div>
+    </div>
+
+    <!-- 設定 -->
+    <div class="card tabpane hidden" id="pane-settings">
+      <div class="title-badge">⚙️ 修改後台密碼</div>
+      <div class="grid2">
+        <div><label class="fld">新密碼</label><input type="password" id="np1"></div>
+        <div><label class="fld">再輸入一次</label><input type="password" id="np2"></div>
+      </div>
+      <div style="height:14px"></div>
+      <button class="btn btn-primary" onclick="changePassword()">更新密碼</button>
+      <p id="pwMsg" class="status"></p>
+      <hr style="border-color:var(--line);margin:24px 0">
+      <p class="hint">學生錄音檔存在你 Google Drive 的「PAS English Lab Recordings」資料夾，資料清單在「PAS English Lab DB」試算表。</p>
+    </div>
+  </div>
+
+  <!-- 編輯彈窗 -->
+  <div id="modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50">
+    <div class="card" style="max-width:640px;width:100%;max-height:90vh;overflow:auto;margin:0" id="modalBody"></div>
+  </div>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/admin.js"></script>
+</body>
+</html>
