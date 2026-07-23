@@ -2,6 +2,7 @@
 let PW = sessionStorage.getItem('pas_pw') || '';
 let DB = { classes: [], lessons: [], submissions: [], stats: [] };
 let EDIT_MARKS = []; // 課文編輯中的分句點（秒）
+let EDITING_EXISTING = false; // 目前彈窗是「編輯既有」還是「新增」
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -177,6 +178,7 @@ function renderLessons() {
 }
 
 function editClass(c) {
+  EDITING_EXISTING = !!(c && c.classId);
   c = c || { classId: '', className: '', bookTitle: '', active: 'yes', order: 99 };
   openModal(`
     <div class="title-badge">${c.classId ? '編輯' : '新增'}班級</div>
@@ -196,6 +198,9 @@ function editClass(c) {
 async function saveClass() {
   const id = $('cId').value.trim();
   if (!id) return alert('請填班級ID');
+  if (!EDITING_EXISTING && DB.classes.some(c => c.classId === id)) {
+    if (!confirm('⚠️ 班級 ID「' + id + '」已經存在！\n\n繼續儲存會「覆蓋」原本的班級（書名、名稱會被改掉；課文不會被刪）。\n\n如果你其實是想新增「另一本書」，請按「取消」，改用不同的班級ID（例如 ' + id + 'b 或 ' + id + '-wonder）。\n\n確定要覆蓋原本的 ' + id + ' 嗎？')) return;
+  }
   const r = await apiCall({ action: 'saveClass', password: PW, classId: id,
     className: $('cName').value, bookTitle: $('cBook').value, order: $('cOrder').value, active: $('cActive').value });
   if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
@@ -207,6 +212,7 @@ async function delClass(id) {
 }
 
 function editLesson(l) {
+  EDITING_EXISTING = !!(l && l.classId && l.lessonId);
   l = l || { classId: '', lessonId: '', lessonLabel: '', text: '', audioUrl: '', order: 99, active: 'yes', shadowMode: 'no', marks: '', gapMultiplier: '1.5', audioFileId: '' };
   EDIT_MARKS = parseMarkStr(l.marks);
   const shadowOn = String(l.shadowMode).toLowerCase() === 'yes';
@@ -330,6 +336,9 @@ function renderMarks() {
 async function saveLesson() {
   const classId = $('lClass').value, lessonId = $('lId').value.trim();
   if (!classId || !lessonId) return alert('請選班級並填課次ID');
+  if (!EDITING_EXISTING && DB.lessons.some(l => l.classId === classId && l.lessonId === lessonId)) {
+    if (!confirm('⚠️ 這個班級已經有課次ID「' + lessonId + '」，繼續會覆蓋原本那一課的內容。\n\n要新增「另一課」請按取消，改用不同的課次ID（例如 ch2、ch3）。\n\n確定要覆蓋嗎？')) return;
+  }
   const shadowOn = $('lShadow') && $('lShadow').checked;
   const r = await apiCall({ action: 'saveLesson', password: PW, classId, lessonId,
     lessonLabel: $('lLabel').value, text: $('lText').value, audioUrl: $('lAudio').value,
