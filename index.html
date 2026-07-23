@@ -7,41 +7,52 @@
   <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
-  <div class="wrap">
-    <p class="brand">OUR READING SPACE · 愉閱空間</p>
-    <div class="card">
-      <div class="title-badge">🎧 學生登入</div>
-
-      <!-- 第一步：班級代碼 -->
-      <div id="stepCode">
-        <label class="fld">班級代碼</label>
-        <input id="codeInput" placeholder="輸入老師給的班級代碼" autocapitalize="off" onkeydown="if(event.key==='Enter')enterCode()">
-        <div style="height:12px"></div>
-        <button class="btn btn-primary" style="width:100%" onclick="enterCode()">進入</button>
-        <p id="codeMsg" class="status"></p>
-      </div>
-
-      <!-- 第二步：選名字 -->
-      <div id="stepName" class="hidden">
-        <p class="hint" id="roomHint"></p>
-        <label class="fld">點選你的名字</label>
-        <div id="nameList" class="class-links"></div>
-        <div id="pinBox" class="hidden">
-          <label class="fld">輸入你的 PIN 碼</label>
-          <input id="pinInput" type="tel" maxlength="6" placeholder="4 位數" onkeydown="if(event.key==='Enter')doLogin()">
-          <div style="height:10px"></div>
-          <button class="btn btn-primary" style="width:100%" onclick="doLogin()">登入</button>
-          <p id="pinMsg" class="status"></p>
-        </div>
-        <div style="height:12px"></div>
-        <button class="btn btn-ghost btn-sm" onclick="backToCode()">← 換班級代碼</button>
+  <div class="login-split">
+    <!-- 左：品牌區 -->
+    <div class="login-hero">
+      <div class="hero-inner">
+        <div class="hero-eyebrow">OUR READING SPACE</div>
+        <h1 class="hero-title">愉閱空間<br>英語跟讀教室</h1>
+        <p class="hero-desc">語感英文．跟讀錄音練習平台。聽老師示範、跟著唸、送出錄音，分數與評語都在這裡。</p>
+        <div class="hero-bar"></div>
       </div>
     </div>
-    <p style="text-align:center">
-      <a href="admin.html" class="hint">老師後台 →</a> ·
-      <a href="manual.html" class="hint">手冊 📖</a> ·
-      <a href="browse.html" class="hint">老師測試：瀏覽所有書</a>
-    </p>
+
+    <!-- 右：登入表單 -->
+    <div class="login-panel">
+      <div class="login-box">
+        <!-- 第一步：班級代碼 -->
+        <div id="stepCode">
+          <h2 class="panel-title">歡迎回來</h2>
+          <p class="panel-sub">請輸入班級代碼<span class="sep">｜</span>開始今天的練習</p>
+          <label class="fld">班級代碼</label>
+          <input id="codeInput" placeholder="輸入老師給的班級代碼" autocapitalize="off" onkeydown="if(event.key==='Enter')enterCode()">
+          <button class="btn btn-primary" onclick="enterCode()">進　入</button>
+          <p id="codeMsg" class="status"></p>
+        </div>
+
+        <!-- 第二步：選名字 -->
+        <div id="stepName" class="hidden">
+          <h2 class="panel-title">找到你的名字</h2>
+          <p class="panel-sub" id="roomHint"></p>
+          <div id="nameList" class="class-links"></div>
+          <div id="pinBox" class="hidden">
+            <label class="fld">輸入你的 PIN 碼</label>
+            <input id="pinInput" type="tel" maxlength="6" placeholder="4 位數" onkeydown="if(event.key==='Enter')doLogin()">
+            <button class="btn btn-primary" onclick="doLogin()">登　入</button>
+            <p id="pinMsg" class="status"></p>
+          </div>
+          <div style="height:16px"></div>
+          <button class="btn btn-ghost btn-sm" onclick="backToCode()">← 換班級代碼</button>
+        </div>
+
+        <p class="login-links">
+          <a href="admin.html">老師後台</a> ·
+          <a href="manual.html">手冊</a> ·
+          <a href="browse.html">瀏覽所有書</a>
+        </p>
+      </div>
+    </div>
   </div>
 
   <script src="assets/config.js"></script>
@@ -59,7 +70,7 @@
         const r = await apiCall({ action: 'roomByCode', code });
         if (!r.ok) { el('codeMsg').innerText = '❌ ' + (r.error || '找不到這個代碼'); return; }
         ROOM = r.room; STUDENTS = r.students;
-        el('roomHint').innerText = '班級：' + ROOM.roomName;
+        el('roomHint').innerText = '班級：' + ROOM.roomName + '｜點選你的名字';
         el('nameList').innerHTML = STUDENTS.length
           ? STUDENTS.map((s, i) => `<a class="class-link" style="cursor:pointer" onclick="pickName(${i})"><span><b>${esc(s.name)}</b></span><span class="go">選我 →</span></a>`).join('')
           : '<p class="hint">這個班還沒有學生，請聯絡老師。</p>';

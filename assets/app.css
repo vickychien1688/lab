@@ -237,3 +237,45 @@ audio { width: 100%; margin-top: 8px; }
   td .btn-sm { margin-bottom: 4px; }
   .title-badge { font-size: 19px; }
 }
+
+/* ============ 品牌登入頁（雙欄，與主站同款） ============ */
+.login-split { position: fixed; inset: 0; z-index: 10; display: flex; background: var(--bg); overflow: auto; }
+.login-split.hidden { display: none; }
+.login-hero {
+  flex: 1.08; position: relative; overflow: hidden;
+  background: radial-gradient(900px 600px at 20% 15%, #1b3a5e 0%, #12294a 45%, var(--ink) 100%);
+  color: #fff; display: flex; align-items: center;
+  padding: 56px;
+}
+.login-hero::before, .login-hero::after {
+  content: ""; position: absolute; border: 1px solid rgba(193,154,61,.45); border-radius: 50%;
+}
+.login-hero::before { width: 560px; height: 560px; right: -160px; bottom: -220px; }
+.login-hero::after  { width: 330px; height: 330px; right: -40px;  bottom: -120px; opacity: .8; }
+.hero-inner { max-width: 460px; }
+.hero-eyebrow { color: var(--gold); letter-spacing: 7px; font-weight: 700; font-size: 15px; margin-bottom: 18px; }
+.hero-title {
+  font-family: var(--serif); font-weight: 900; color: #fff;
+  font-size: 52px; line-height: 1.22; letter-spacing: 2px; margin: 0 0 22px;
+}
+.hero-desc { color: rgba(255,255,255,.82); font-size: 16.5px; line-height: 2; margin: 0 0 26px; }
+.hero-bar { width: 84px; height: 4px; background: var(--gold); border-radius: 2px; }
+.login-panel { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 34px; background: var(--bg); }
+.login-box { width: 100%; max-width: 430px; }
+.panel-title { font-family: var(--serif); font-weight: 900; color: var(--ink); font-size: 40px; letter-spacing: 2px; margin: 0 0 10px; }
+.panel-sub { color: var(--muted); font-size: 15.5px; margin: 0 0 26px; }
+.panel-sub .sep { margin: 0 8px; color: #cfd6de; }
+.login-box label.fld { font-size: 15px; color: var(--ink); font-weight: 700; margin-top: 18px; }
+.login-box input { padding: 14px 16px; font-size: 16.5px; }
+.login-box .btn-primary { width: 100%; padding: 16px; font-size: 17px; letter-spacing: 4px; margin-top: 20px; }
+.login-links { text-align: center; margin-top: 26px; color: var(--muted); font-size: 14px; }
+.login-links a { margin: 0 6px; }
+@media (max-width: 900px) {
+  .login-split { flex-direction: column; }
+  .login-hero { padding: 44px 30px 38px; flex: none; }
+  .hero-title { font-size: 34px; }
+  .login-hero::before { width: 320px; height: 320px; right: -120px; bottom: -180px; }
+  .login-hero::after { width: 190px; height: 190px; right: -30px; bottom: -90px; }
+  .login-panel { padding: 34px 22px 60px; align-items: flex-start; }
+  .panel-title { font-size: 30px; }
+}
