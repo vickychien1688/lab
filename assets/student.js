@@ -60,36 +60,16 @@
 
   function currentLesson() { return lessons.find(l => l.lessonId === select.value) || lessons[0]; }
 
-  const audioCache = {};
   function switchLesson() {
     const l = currentLesson();
     el('lessonText').innerText = l.text || '';
     el('audioPlayer').classList.add('hidden');
     el('uploadBtn').classList.add('hidden');
-    loadTeacherAudio(l);
-  }
-  async function loadTeacherAudio(l) {
+    // 音檔直接串流（CDN 或同網域檔案），不再等整包下載
     const t = el('teacherAudio');
-    if (l.audioFileId) {
-      if (audioCache[l.audioFileId]) { t.src = audioCache[l.audioFileId]; t.load(); el('status').innerText = 'READY'; return; }
-      el('status').innerText = '載入音檔中…';
-      try {
-        const r = await apiCall({ action: 'lessonAudio', fileId: l.audioFileId });
-        if (r.ok) {
-          const url = b64ToBlobUrl(r.base64, r.mime);
-          audioCache[l.audioFileId] = url;
-          t.src = url; t.load(); el('status').innerText = 'READY'; return;
-        }
-      } catch (e) {}
-    }
     t.src = l.audioUrl || '';
     t.load();
     el('status').innerText = 'READY';
-  }
-  function b64ToBlobUrl(b64, mime) {
-    const bin = atob(b64), arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    return URL.createObjectURL(new Blob([arr], { type: mime || 'audio/mpeg' }));
   }
 
   // ---- 錄音 ----

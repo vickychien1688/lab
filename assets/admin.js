@@ -105,9 +105,9 @@ async function playSub(fileId, btn) {
   const r = await apiCall({ action: 'getAudio', password: PW, fileId });
   btn.innerText = '▶ 播放';
   if (!r.ok) return alert('讀取失敗：' + (r.error || ''));
-  const src = 'data:' + r.mime + ';base64,' + r.base64;
-  holder.innerHTML = `<audio controls autoplay src="${src}"></audio>
-    <a class="hint" href="${src}" download="${esc(r.fileName)}">⬇ 下載</a>`;
+  const src = r.url; // 簽名網址，直接串流播放（比 base64 快很多）
+  holder.innerHTML = `<audio controls autoplay src="${esc(src)}"></audio>
+    <a class="hint" href="${esc(src)}" download="${esc(r.fileName)}" target="_blank">⬇ 下載</a>`;
   holder.dataset.loaded = '1';
 }
 
@@ -320,7 +320,9 @@ async function uploadAudioFile() {
     const base64 = await fileToBase64(file);
     const r = await apiCall({ action: 'uploadAudio', password: PW, audio: base64, mime: file.type || 'audio/mpeg', filename: file.name });
     if (!r.ok) throw new Error(r.error || 'fail');
-    $('lAudioFileId').value = r.fileId;
+    // 上傳後直接得到 CDN 網址，填入音檔網址欄
+    $('lAudio').value = r.url;
+    if ($('lAudioFileId')) $('lAudioFileId').value = '';
     $('audioStatus').innerText = '✅ 已上傳：' + (r.fileName || file.name) + '（記得按最下面「儲存」才生效）';
     const a = $('markAudio'); if (a) { a.src = URL.createObjectURL(file); a.load(); } // 立即可用來分句
   } catch (e) {

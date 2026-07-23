@@ -1,15 +1,15 @@
 /* =========================================================
  *  PAS English Lab — 全站設定（只要改這一個檔）
  * =========================================================
- *  部署好 Google Apps Script 後，把「網頁應用程式」的 /exec 網址
- *  貼到下面 API_URL 即可。學生 App 與後台都會讀這裡。
+ *  後端：Supabase Edge Function（2026-07 由 Google Apps Script 遷移，快 5~10 倍）。
+ *  API_KEY 是 Supabase 的 Publishable key，官方定義為「可安全公開」的前端金鑰。
  */
 window.PAS_CONFIG = {
-  // ↓↓↓ 你的 GAS /exec 網址（已設定好）↓↓↓
-  API_URL: "https://script.google.com/macros/s/AKfycbxNackZqJWK2TeVyQsi-zarT3K_Z594U2rk5bPJTzg5OZ2S15Fjs1p7GtmEybz4R4X8rw/exec"
+  API_URL: "https://nvnrkzveyehcnlaszzin.supabase.co/functions/v1/paslab-api",
+  API_KEY: "sb_publishable_8-cmiPFlZNzWu4VyhMA7dA_B0hteB1u"
 };
 
-/* 共用：呼叫後端 API（POST + text/plain，避開 CORS 預檢，可讀回應）
+/* 共用：呼叫後端 API。
    內建「⏳ 處理中」提示條：只要有請求在跑就顯示，讓使用者知道系統在工作。 */
 (function () {
   let busy = 0, bar = null;
@@ -29,7 +29,10 @@ window.PAS_CONFIG = {
     try {
       const res = await fetch(window.PAS_CONFIG.API_URL, {
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+          "Authorization": "Bearer " + window.PAS_CONFIG.API_KEY
+        },
         body: JSON.stringify(payload)
       });
       return await res.json();
