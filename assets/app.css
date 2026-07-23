@@ -256,7 +256,7 @@ audio { width: 100%; margin-top: 8px; }
 .hero-eyebrow { color: var(--gold); letter-spacing: 7px; font-weight: 700; font-size: 15px; margin-bottom: 18px; }
 .hero-title {
   font-family: var(--serif); font-weight: 900; color: #fff;
-  font-size: 42px; line-height: 1.22; letter-spacing: 2px; margin: 0 0 22px;
+  font-size: clamp(26px, 3.3vw, 42px); line-height: 1.22; letter-spacing: 2px; margin: 0 0 22px;
   white-space: nowrap;
 }
 .hero-desc { color: rgba(255,255,255,.82); font-size: 16.5px; line-height: 2; margin: 0 0 26px; }
