@@ -3,49 +3,93 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PAS English Lab · 英語跟讀教室</title>
+  <title>學生登入 · PAS English Lab</title>
   <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
   <div class="wrap">
     <p class="brand">PAS ENGLISH LAB</p>
     <div class="card">
-      <div class="title-badge">🎧 英語跟讀教室</div>
-      <p class="hint">請選擇年級與書本進入錄音教室：</p>
-      <div id="classList" class="class-links">
-        <p class="hint" id="loading">載入中…</p>
+      <div class="title-badge">🎧 學生登入</div>
+
+      <!-- 第一步：班級代碼 -->
+      <div id="stepCode">
+        <label class="fld">班級代碼</label>
+        <input id="codeInput" placeholder="輸入老師給的班級代碼" autocapitalize="off" onkeydown="if(event.key==='Enter')enterCode()">
+        <div style="height:12px"></div>
+        <button class="btn btn-primary" style="width:100%" onclick="enterCode()">進入</button>
+        <p id="codeMsg" class="status"></p>
+      </div>
+
+      <!-- 第二步：選名字 -->
+      <div id="stepName" class="hidden">
+        <p class="hint" id="roomHint"></p>
+        <label class="fld">點選你的名字</label>
+        <div id="nameList" class="class-links"></div>
+        <div id="pinBox" class="hidden">
+          <label class="fld">輸入你的 PIN 碼</label>
+          <input id="pinInput" type="tel" maxlength="6" placeholder="4 位數" onkeydown="if(event.key==='Enter')doLogin()">
+          <div style="height:10px"></div>
+          <button class="btn btn-primary" style="width:100%" onclick="doLogin()">登入</button>
+          <p id="pinMsg" class="status"></p>
+        </div>
+        <div style="height:12px"></div>
+        <button class="btn btn-ghost btn-sm" onclick="backToCode()">← 換班級代碼</button>
       </div>
     </div>
-    <p style="text-align:center"><a href="admin.html" class="hint">老師後台 →</a> &nbsp;·&nbsp; <a href="manual.html" class="hint">老師使用手冊 📖</a></p>
+    <p style="text-align:center">
+      <a href="admin.html" class="hint">老師後台 →</a> ·
+      <a href="manual.html" class="hint">手冊 📖</a> ·
+      <a href="browse.html" class="hint">老師測試：瀏覽所有書</a>
+    </p>
   </div>
 
   <script src="assets/config.js"></script>
   <script>
-    (async () => {
-      const box = document.getElementById('classList');
+    let ROOM = null, STUDENTS = [], PICKED = null;
+    const el = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    if (localStorage.getItem('pas_student')) location.replace('my.html');
+
+    async function enterCode() {
+      const code = el('codeInput').value.trim();
+      if (!code) return;
+      el('codeMsg').innerText = '查詢中…';
       try {
-        const r = await apiCall({ action: 'classes' });
-        if (!r.ok || !r.classes.length) { box.innerHTML = '<p class="hint">尚未建立任何書本，請先到老師後台新增。</p>'; return; }
-        const grades = {};
-        r.classes.forEach(c => {
-          const g = c.gradeId || c.classId;
-          if (!grades[g]) grades[g] = { name: c.gradeName || c.className || g, order: c.order || 0, books: [] };
-          grades[g].books.push(c);
-          grades[g].order = Math.min(grades[g].order, c.order || 0);
-        });
-        const list = Object.values(grades).sort((a, b) => (a.order || 0) - (b.order || 0));
-        box.innerHTML = list.map(g => `
-          <div class="grade-title">${esc(g.name)}</div>
-          ${g.books.slice().sort((a, b) => (a.order || 0) - (b.order || 0)).map(b => `
-            <a class="class-link" href="student.html?class=${encodeURIComponent(b.classId)}">
-              <span><b>${esc(b.bookTitle || b.classId)}</b></span>
-              <span class="go">進入 →</span>
-            </a>`).join('')}`).join('');
-      } catch (e) {
-        box.innerHTML = '<p class="hint">連線失敗，請確認 config.js 的 API_URL 已設定正確。</p>';
-      }
-    })();
-    function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+        const r = await apiCall({ action: 'roomByCode', code });
+        if (!r.ok) { el('codeMsg').innerText = '❌ ' + (r.error || '找不到這個代碼'); return; }
+        ROOM = r.room; STUDENTS = r.students;
+        el('roomHint').innerText = '班級：' + ROOM.roomName;
+        el('nameList').innerHTML = STUDENTS.length
+          ? STUDENTS.map((s, i) => `<a class="class-link" style="cursor:pointer" onclick="pickName(${i})"><span><b>${esc(s.name)}</b></span><span class="go">選我 →</span></a>`).join('')
+          : '<p class="hint">這個班還沒有學生，請聯絡老師。</p>';
+        el('stepCode').classList.add('hidden'); el('stepName').classList.remove('hidden');
+        el('codeMsg').innerText = '';
+      } catch (e) { el('codeMsg').innerText = '連線失敗，請稍後再試'; }
+    }
+    function pickName(i) {
+      PICKED = STUDENTS[i];
+      if (PICKED.hasPin) { el('pinBox').classList.remove('hidden'); el('pinInput').value = ''; el('pinInput').focus(); }
+      else doLogin();
+    }
+    async function doLogin() {
+      if (!PICKED) return;
+      const pin = el('pinInput') ? el('pinInput').value.trim() : '';
+      el('pinMsg').innerText = '登入中…';
+      try {
+        const r = await apiCall({ action: 'studentLogin', studentId: PICKED.studentId, pin });
+        if (!r.ok) { el('pinMsg').innerText = '❌ ' + (r.error || '登入失敗'); return; }
+        localStorage.setItem('pas_student', JSON.stringify({
+          studentId: r.student.studentId, name: r.student.name,
+          roomId: r.student.roomId, roomName: (r.room && r.room.roomName) || ROOM.roomName || ''
+        }));
+        location.href = 'my.html';
+      } catch (e) { el('pinMsg').innerText = '連線失敗'; }
+    }
+    function backToCode() {
+      el('stepName').classList.add('hidden'); el('stepCode').classList.remove('hidden');
+      el('pinBox').classList.add('hidden'); PICKED = null;
+    }
   </script>
 </body>
 </html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的作業 · PAS English Lab</title>
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar">
+      <span class="brand" id="hello">…</span>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost btn-sm" onclick="location.reload()">🔄 重新整理</button>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">登出</button>
+    </div>
+    <div class="card">
+      <div class="title-badge">📋 我的作業</div>
+      <div id="list"><p class="hint">載入中…</p></div>
+    </div>
+  </div>
+
+  <script src="assets/config.js"></script>
+  <script>
+    const el = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const STU = (() => { try { return JSON.parse(localStorage.getItem('pas_student') || 'null'); } catch (e) { return null; } })();
+    if (!STU) location.replace('index.html');
+    function logout() { localStorage.removeItem('pas_student'); location.href = 'index.html'; }
+
+    (async () => {
+      if (!STU) return;
+      el('hello').innerHTML = '👋 ' + esc(STU.name) + '　<span style="color:var(--muted);font-size:12px;letter-spacing:0">' + esc(STU.roomName || '') + '</span>';
+      try {
+        const r = await apiCall({ action: 'myAssignments', roomId: STU.roomId, studentId: STU.studentId });
+        const box = el('list');
+        if (!r.ok) { box.innerHTML = '<p class="hint">載入失敗，請重新整理。</p>'; return; }
+        if (!r.assignments.length) { box.innerHTML = '<p class="hint">目前老師還沒有派作業給你 🎉<br>過陣子再回來看看。</p>'; return; }
+        box.innerHTML = r.assignments.map(a => {
+          const graded = a.status === 'reviewed' && a.score !== '' && a.score != null;
+          const badge = graded ? `<span class="pill reviewed">✅ 已評分：${esc(a.score)} 分</span>`
+            : (a.done ? '<span class="pill new">📨 已繳交・等待老師評分</span>'
+              : '<span class="pill" style="background:#333a45;color:#98a2b3">尚未錄音</span>');
+          const cmt = graded && a.comment ? `<div style="margin-top:8px;color:#e6ebf2;background:#2d333d;border:1px solid #444;border-radius:8px;padding:10px 12px"><b style="color:var(--primary)">老師評語：</b>${esc(a.comment)}</div>` : '';
+          const due = a.dueDate ? ` <small style="color:var(--muted)">· 截止 ${esc(a.dueDate)}</small>` : '';
+          const link = `student.html?class=${encodeURIComponent(a.classId)}&lesson=${encodeURIComponent(a.lessonId)}&assign=${encodeURIComponent(a.assignId)}`;
+          return `<div style="background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px">
+              <div style="font-size:17px;font-weight:700">${esc(a.bookTitle)} · ${esc(a.lessonLabel)}${due}</div>
+              <div style="margin:8px 0">${badge}</div>${cmt}
+              <a class="btn btn-primary btn-sm" style="display:inline-block;text-decoration:none;margin-top:6px" href="${link}">${a.done ? '🎤 重新錄音' : '🎤 去錄音'}</a>
+            </div>`;
+        }).join('');
+      } catch (e) { el('list').innerHTML = '<p class="hint">連線失敗，請重新整理。</p>'; }
+    })();
+  </script>
+</body>
+</html>

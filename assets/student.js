@@ -2,11 +2,21 @@
 (() => {
   const qs = new URLSearchParams(location.search);
   const classId = qs.get('class') || 'G7';
+  const lessonParam = qs.get('lesson');
+  const assignParam = qs.get('assign');
+  const STU = (() => { try { return JSON.parse(localStorage.getItem('pas_student') || 'null'); } catch (e) { return null; } })();
 
   const el = id => document.getElementById(id);
   const select = el('lessonSelect');
   let lessons = [];
   let recStartMs = 0;
+
+  // ---- 已登入學生：帶入身分、鎖定姓名、顯示回作業列表 ----
+  if (STU) {
+    const n = el('studentName'); if (n) { n.value = STU.name; n.readOnly = true; }
+    const brand = document.querySelector('.brand');
+    if (brand) brand.innerHTML = 'PAS ENGLISH LAB · <a href="my.html" style="color:var(--primary)">← 回我的作業</a>';
+  }
 
   // ---- 偵測 LINE / FB 等內建瀏覽器（常無法錄音）----
   const UA = navigator.userAgent || '';
@@ -43,6 +53,7 @@
       if (!lessons.length) { el('lessonText').innerText = '這個班級還沒有課文，請聯絡老師。'; return; }
       select.innerHTML = lessons.map(l => `<option value="${l.lessonId}">${escAttr(l.lessonLabel || l.lessonId)}</option>`).join('');
       select.onchange = switchLesson;
+      if (lessonParam && lessons.some(l => l.lessonId === lessonParam)) { select.value = lessonParam; if (assignParam) select.disabled = true; }
       switchLesson();
     } catch (e) {
       el('lessonText').innerText = '連線失敗，請確認 config.js 的 API_URL。';
@@ -213,12 +224,15 @@
         action: 'submit',
         classId,
         lessonId: l.lessonId,
-        studentName: el('studentName').value.trim(),
+        studentName: STU ? STU.name : el('studentName').value.trim(),
+        roomId: STU ? STU.roomId : '',
+        studentId: STU ? STU.studentId : '',
+        assignId: assignParam || '',
         mime: recMime,
         duration: Math.round((Date.now() - recStartMs) / 1000),
         audio: base64
       });
-      if (r.ok) { el('status').innerText = '✅ 已送出給老師！'; alert('送出成功 Success!'); }
+      if (r.ok) { el('status').innerText = '✅ 已送出給老師！'; alert('送出成功 Success!'); if (STU) location.href = 'my.html'; }
       else { throw new Error(r.error || 'fail'); }
     } catch (e) {
       el('status').innerText = '❌ 送出失敗，請再試一次';
