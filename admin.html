@@ -12,8 +12,10 @@
     <p class="brand">PAS ENGLISH LAB · 後台</p>
     <div class="card">
       <div class="title-badge">🔐 老師登入</div>
+      <label class="fld">帳號（主帳號請留空）</label>
+      <input id="userInput" placeholder="老師帳號；主帳號留空" autocapitalize="off" onkeydown="if(event.key==='Enter')doLogin()">
       <label class="fld">密碼</label>
-      <input type="password" id="pwInput" placeholder="輸入老師密碼" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="password" id="pwInput" placeholder="輸入密碼" onkeydown="if(event.key==='Enter')doLogin()">
       <div style="height:14px"></div>
       <button class="btn btn-primary" style="width:100%" onclick="doLogin()">登入</button>
       <p id="loginMsg" class="status"></p>
@@ -25,6 +27,7 @@
   <div class="wrap-wide hidden" id="adminView">
     <div class="toolbar">
       <p class="brand" style="margin:0">PAS ENGLISH LAB · 老師後台</p>
+      <span id="whoami" style="color:var(--muted);font-size:13px;margin-left:10px"></span>
       <span class="spacer"></span>
       <button class="btn btn-ghost btn-sm" onclick="refreshAll()">🔄 重新整理</button>
       <button class="btn btn-ghost btn-sm" onclick="logout()">登出</button>
@@ -38,7 +41,16 @@
       <div class="tab" data-tab="students" onclick="showTab('students')">👤 繳交彙整</div>
       <div class="tab" data-tab="stats" onclick="showTab('stats')">📊 統計</div>
       <div class="tab" data-tab="lessons" onclick="showTab('lessons')">📚 資源庫</div>
+      <div class="tab hidden" data-tab="teachers" onclick="showTab('teachers')">👤 老師帳號</div>
       <div class="tab" data-tab="settings" onclick="showTab('settings')">⚙️ 設定</div>
+    </div>
+
+    <!-- 老師帳號（僅主帳號可見）-->
+    <div class="card tabpane hidden" id="pane-teachers">
+      <div class="toolbar"><b>老師帳號</b><span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" onclick="editTeacher()">＋ 新增老師</button></div>
+      <p class="hint">主帳號用「帳號留空＋主密碼」登入（權限最高，可管理帳號）。這裡新增的老師，用各自的帳號密碼登入、可管理全部內容但不能管帳號。</p>
+      <div style="overflow-x:auto"><table id="teacherTable"></table></div>
     </div>
 
     <!-- 班級（學生分組）-->
@@ -109,7 +121,8 @@
 
     <!-- 設定 -->
     <div class="card tabpane hidden" id="pane-settings">
-      <div class="title-badge">⚙️ 修改後台密碼</div>
+      <div class="title-badge">⚙️ 修改主帳號密碼</div>
+      <p class="hint">這是「主帳號」的密碼（帳號留空登入用）。老師個別帳號的密碼請到「👤 老師帳號」修改。</p>
       <div class="grid2">
         <div><label class="fld">新密碼</label><input type="password" id="np1"></div>
         <div><label class="fld">再輸入一次</label><input type="password" id="np2"></div>

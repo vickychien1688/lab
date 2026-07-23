@@ -109,8 +109,11 @@ function route(d) {
       case 'roomByCode':    return json(roomByCode(d));
       case 'studentLogin':  return json(studentLogin(d));
       case 'myAssignments': return json(myAssignments(d));
+      case 'whoami':        return json(whoamiA(d));
       // ---- 以下需要密碼 ----
       case 'uploadAudio':return needAuth(d) || json(uploadAudio(d));
+      case 'saveTeacher':  return needAdmin(d) || json(saveTeacherA(d));
+      case 'deleteTeacher':return needAdmin(d) || json(deleteRowByKey('Teachers', 'username', d.username2));
       case 'saveRoom':        return needAuth(d) || json(saveRoomA(d));
       case 'deleteRoom':      return needAuth(d) || json(deleteRowByKey('Rooms', 'roomId', d.roomId));
       case 'saveStudent':     return needAuth(d) || json(saveStudentA(d));
@@ -118,7 +121,7 @@ function route(d) {
       case 'deleteStudent':   return needAuth(d) || json(deleteRowByKey('Students', 'studentId', d.studentId));
       case 'saveAssignment':  return needAuth(d) || json(saveAssignmentA(d));
       case 'deleteAssignment':return needAuth(d) || json(deleteRowByKey('Assignments', 'assignId', d.assignId));
-      case 'adminData':  return needAuth(d) || json(adminData());
+      case 'adminData':  return needAuth(d) || json(adminData(d));
       case 'getAudio':   return needAuth(d) || json(getAudio(d.fileId));
       case 'saveClass':  return needAuth(d) || json(saveClass(d));
       case 'deleteClass':return needAuth(d) || json(deleteRowByKey('Classes', 'classId', d.classId));
@@ -126,7 +129,7 @@ function route(d) {
       case 'deleteLesson':return needAuth(d) || json(deleteLesson(d));
       case 'grade':      return needAuth(d) || json(grade(d));
       case 'deleteSubmission': return needAuth(d) || json(deleteSubmission(d));
-      case 'setPassword':return needAuth(d) || json(setPassword(d));
+      case 'setPassword':return needAdmin(d) || json(setPassword(d));
       default:           return json({ ok: false, error: 'unknown action: ' + action });
     }
   } catch (err) {
@@ -144,11 +147,41 @@ function adminPassword() {
   }
   return DEFAULT_ADMIN_PASSWORD;
 }
-function needAuth(d) {
-  if (String(d.password || '') !== adminPassword()) {
-    return json({ ok: false, error: 'auth', message: '密碼錯誤' });
+// 驗證：主帳號（帳號留空＋主密碼）或 Teachers 名單裡的老師帳號
+function authInfo(d) {
+  var pw = String(d.password || '');
+  var user = String(d.username || '').trim();
+  if (!user) { // 主帳號
+    if (pw && pw === adminPassword()) return { ok: true, role: 'admin', name: '主帳號', username: '' };
+    return null;
   }
-  return null; // 通過
+  ensureTeachersSheet();
+  var t = readSheet('Teachers').filter(function (x) {
+    return String(x.username).trim().toLowerCase() === user.toLowerCase() && String(x.active).toLowerCase() !== 'no';
+  })[0];
+  if (t && String(t.password) === pw) return { ok: true, role: t.role || 'teacher', name: t.name || user, username: String(t.username) };
+  return null;
+}
+function needAuth(d) {
+  if (!authInfo(d)) return json({ ok: false, error: 'auth', message: '帳號或密碼錯誤' });
+  return null;
+}
+function needAdmin(d) {
+  var a = authInfo(d);
+  if (!a) return json({ ok: false, error: 'auth', message: '帳號或密碼錯誤' });
+  if (a.role !== 'admin') return json({ ok: false, error: 'perm', message: '只有主帳號可以管理老師帳號' });
+  return null;
+}
+function ensureTeachersSheet() { ensureSheet('Teachers', ['username', 'password', 'name', 'role', 'active']); }
+function saveTeacherA(d) {
+  ensureTeachersSheet();
+  var u = String(d.username2 || '').trim();
+  if (!u) return { ok: false, error: '請填帳號' };
+  return upsert('Teachers', 'username', u, { username: u, password: String(d.password2 || ''), name: d.name || u, role: d.role || 'teacher', active: d.active || 'yes' });
+}
+function whoamiA(d) {
+  var a = authInfo(d);
+  return a ? { ok: true, role: a.role, name: a.name, username: a.username } : { ok: false, error: 'auth' };
 }
 function setPassword(d) {
   var next = String(d.newPassword || '').trim();
@@ -331,8 +364,9 @@ function saveAssignmentA(d) {
 // ============================================================
 //  後台
 // ============================================================
-function adminData() {
-  ensureLmsSheets();
+function adminData(d) {
+  d = d || {};
+  ensureLmsSheets(); ensureTeachersSheet();
   var classes = getClasses(false);
   var lessons = getLessons(null, false);
   var subs = readSheet('Submissions').map(function (s, i) { s._row = i + 2; return s; })
@@ -355,9 +389,11 @@ function adminData() {
     return v;
   });
 
+  var me = authInfo(d) || { role: 'admin', name: '主帳號' };
   return {
     ok: true, classes: classes, lessons: lessons, submissions: subs, stats: statList,
-    rooms: readSheet('Rooms'), students: readSheet('Students'), assignments: readSheet('Assignments')
+    rooms: readSheet('Rooms'), students: readSheet('Students'), assignments: readSheet('Assignments'),
+    me: me, teachers: me.role === 'admin' ? readSheet('Teachers') : []
   };
 }
 
@@ -504,6 +540,7 @@ function upsert(sheetName, keyCol, keyVal, obj) {
 }
 function deleteRowByKey(sheetName, keyCol, keyVal) {
   var sh = getSS().getSheetByName(sheetName);
+  if (!sh) return { ok: false, error: 'no sheet' };
   var data = sh.getDataRange().getValues(), head = data[0], iKey = head.indexOf(keyCol);
   for (var r = data.length - 1; r >= 1; r--) {
     if (data[r][iKey] === keyVal) { sh.deleteRow(r + 1); return { ok: true }; }

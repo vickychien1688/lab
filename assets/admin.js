@@ -1,45 +1,59 @@
 /* 老師後台邏輯 */
 let PW = sessionStorage.getItem('pas_pw') || '';
-let DB = { classes: [], lessons: [], submissions: [], stats: [], rooms: [], students: [], assignments: [] };
+let USER = sessionStorage.getItem('pas_user') || '';
+let ME = { role: 'admin', name: '主帳號' };
+let DB = { classes: [], lessons: [], submissions: [], stats: [], rooms: [], students: [], assignments: [], teachers: [] };
 let EDIT_MARKS = []; // 課文編輯中的分句點（秒）
 let EDITING_EXISTING = false; // 目前彈窗是「編輯既有」還是「新增」
+
+// 讓所有後台 apiCall 自動帶上登入帳號（主帳號 USER 為空）
+const _rawApi = window.apiCall;
+window.apiCall = (p) => _rawApi(Object.assign({}, p, USER ? { username: USER } : {}));
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// 若已有暫存密碼，直接嘗試進入
-if (PW) tryEnter(PW, true);
+// 若已有暫存登入，直接嘗試進入
+if (PW || USER) tryEnter(USER, PW, true);
 
 async function doLogin() {
+  const user = ($('userInput') ? $('userInput').value.trim() : '');
   const pw = $('pwInput').value;
   if (!pw) return;
   $('loginMsg').innerText = '登入中…';
-  await tryEnter(pw, false);
+  await tryEnter(user, pw, false);
 }
-async function tryEnter(pw, silent) {
+async function tryEnter(user, pw, silent) {
   try {
-    const r = await apiCall({ action: 'adminData', password: pw });
+    const r = await _rawApi({ action: 'adminData', username: user, password: pw });
     if (r.ok) {
-      PW = pw; sessionStorage.setItem('pas_pw', pw);
+      PW = pw; USER = user; ME = r.me || { role: 'admin', name: '主帳號' };
+      sessionStorage.setItem('pas_pw', pw); sessionStorage.setItem('pas_user', user);
       DB = r;
       $('loginView').classList.add('hidden');
       $('adminView').classList.remove('hidden');
+      applyRole();
       renderAll();
     } else {
-      sessionStorage.removeItem('pas_pw');
-      if (!silent) $('loginMsg').innerText = '❌ ' + (r.message || '密碼錯誤');
+      sessionStorage.removeItem('pas_pw'); sessionStorage.removeItem('pas_user');
+      if (!silent) $('loginMsg').innerText = '❌ ' + (r.message || '帳號或密碼錯誤');
     }
   } catch (e) {
     if (!silent) $('loginMsg').innerText = '連線失敗，確認 config.js 的 API_URL。';
   }
 }
-function logout() { sessionStorage.removeItem('pas_pw'); location.reload(); }
+function logout() { sessionStorage.removeItem('pas_pw'); sessionStorage.removeItem('pas_user'); location.reload(); }
+function applyRole() {
+  const isAdmin = ME.role === 'admin';
+  const t = document.querySelector('.tab[data-tab="teachers"]'); if (t) t.classList.toggle('hidden', !isAdmin);
+  const who = $('whoami'); if (who) who.innerText = '👤 ' + (ME.name || '') + (isAdmin ? '（主帳號）' : '');
+}
 
 async function refreshAll() {
   const r = await apiCall({ action: 'adminData', password: PW });
-  if (r.ok) { DB = r; renderAll(); }
+  if (r.ok) { DB = r; ME = r.me || ME; renderAll(); }
 }
-function renderAll() { renderSubs(); renderStudents(); renderStats(); renderLessons(); populateFilters(); renderRooms(); fillRoomSelects(); renderRoster(); renderAssignments(); }
+function renderAll() { renderSubs(); renderStudents(); renderStats(); renderLessons(); populateFilters(); renderRooms(); fillRoomSelects(); renderRoster(); renderAssignments(); renderTeachers(); }
 
 function showTab(t) {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === t));
@@ -384,8 +398,8 @@ async function changePassword() {
   const a = $('np1').value, b = $('np2').value;
   if (!a || a !== b) { $('pwMsg').innerText = '兩次密碼不一致'; return; }
   const r = await apiCall({ action: 'setPassword', password: PW, newPassword: a });
-  if (r.ok) { PW = a; sessionStorage.setItem('pas_pw', a); $('pwMsg').innerText = '✅ 已更新'; $('np1').value = $('np2').value = ''; }
-  else $('pwMsg').innerText = '更新失敗';
+  if (r.ok) { if (!USER) { PW = a; sessionStorage.setItem('pas_pw', a); } $('pwMsg').innerText = '✅ 已更新'; $('np1').value = $('np2').value = ''; }
+  else $('pwMsg').innerText = r.message || '更新失敗';
 }
 
 // ---------------- 班級 / 學生名單 / 派作業 ----------------
@@ -543,6 +557,49 @@ async function delAssignment(id) {
   if (!confirm('取消這個作業指派？（不會刪學生已交的錄音）')) return;
   const r = await apiCall({ action: 'deleteAssignment', password: PW, assignId: id });
   if (r.ok) await refreshAll(); else alert('刪除失敗');
+}
+
+// ---------------- 老師帳號（僅主帳號可見）----------------
+function renderTeachers() {
+  const t = $('teacherTable'); if (!t) return;
+  t.innerHTML = `
+    <tr><th>帳號</th><th>顯示名稱</th><th>密碼</th><th>角色</th><th>啟用</th><th></th></tr>
+    ${(DB.teachers || []).map(x => `<tr>
+      <td><b>${esc(x.username)}</b></td><td>${esc(x.name)}</td><td>${esc(x.password)}</td>
+      <td>${x.role === 'admin' ? '主帳號級' : '老師'}</td>
+      <td>${String(x.active).toLowerCase() === 'no' ? '停用' : '✅'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='editTeacher(${JSON.stringify(x)})'>編輯</button>
+          <button class="btn btn-danger btn-sm" onclick="delTeacher('${esc(x.username)}')">🗑</button></td>
+    </tr>`).join('') || '<tr><td colspan="6" class="hint">還沒有其他老師帳號，按右上「＋ 新增老師」。</td></tr>'}`;
+}
+function editTeacher(x) {
+  x = x || { username: '', password: '', name: '', role: 'teacher', active: 'yes' };
+  openModal(`
+    <div class="title-badge">${x.username ? '編輯' : '新增'}老師帳號</div>
+    <label class="fld">帳號（登入用，英數字，建立後勿改）</label><input id="tUser" value="${esc(x.username)}" ${x.username ? 'readonly' : ''} autocapitalize="off">
+    <label class="fld">密碼</label><input id="tPass" value="${esc(x.password)}">
+    <label class="fld">顯示名稱</label><input id="tName" value="${esc(x.name)}">
+    <div class="grid2">
+      <div><label class="fld">角色</label>
+        <select id="tRole"><option value="teacher" ${x.role !== 'admin' ? 'selected' : ''}>老師</option><option value="admin" ${x.role === 'admin' ? 'selected' : ''}>主帳號級（可管帳號）</option></select></div>
+      <div><label class="fld">啟用</label>
+        <select id="tActive"><option value="yes" ${x.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${x.active === 'no' ? 'selected' : ''}>否</option></select></div>
+    </div>
+    <div style="height:12px"></div>
+    <div class="row"><button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveTeacher()">儲存</button></div>`);
+}
+async function saveTeacher() {
+  const u = ($('tUser').value || '').trim();
+  if (!u) return alert('請填帳號');
+  if (!($('tPass').value || '').trim()) return alert('請填密碼');
+  const r = await apiCall({ action: 'saveTeacher', password: PW, username2: u, password2: $('tPass').value, name: $('tName').value, role: $('tRole').value, active: $('tActive').value });
+  if (r.ok) { closeModal(); await refreshAll(); } else alert(r.message || '儲存失敗');
+}
+async function delTeacher(u) {
+  if (!confirm('刪除老師帳號「' + u + '」？')) return;
+  const r = await apiCall({ action: 'deleteTeacher', password: PW, username2: u });
+  if (r.ok) await refreshAll(); else alert(r.message || '刪除失敗');
 }
 
 // ---------------- Modal ----------------
