@@ -47,10 +47,17 @@ function showTab(t) {
   $('pane-' + t).classList.remove('hidden');
 }
 
+// 書本/年級小工具
+function bookById(id) { return DB.classes.find(c => c.classId === id); }
+function bookLabel(id) { const b = bookById(id); return b ? ((b.gradeName ? b.gradeName + ' · ' : '') + (b.bookTitle || b.classId)) : id; }
+function gradeNameByGid(g) { const b = DB.classes.find(c => (c.gradeId || c.classId) === g); return b ? (b.gradeName || g) : g; }
+function gradeIds() { return [...new Set(DB.classes.map(c => c.gradeId || c.classId).filter(Boolean))]; }
+function autoGradeName() { const g = ($('cGradeId').value || '').trim(); const nm = gradeNameByGid(g); if (nm && nm !== g && !($('cGradeName').value || '').trim()) $('cGradeName').value = nm; }
+
 // ---------------- 學生錄音 ----------------
 function populateFilters() {
   const fc = $('fClass'), fl = $('fLesson');
-  fc.innerHTML = '<option value="">全部班級</option>' + DB.classes.map(c => `<option value="${esc(c.classId)}">${esc(c.className || c.classId)}</option>`).join('');
+  fc.innerHTML = '<option value="">全部書本</option>' + DB.classes.map(c => `<option value="${esc(c.classId)}">${esc(bookLabel(c.classId))}</option>`).join('');
   fl.innerHTML = '<option value="">全部課次</option>' + uniqueLessons().map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
 }
 function uniqueLessons() { return [...new Set(DB.submissions.map(s => s.lessonId).filter(Boolean))]; }
@@ -62,11 +69,11 @@ function renderSubs() {
     (!fn || String(s.studentName).toLowerCase().includes(fn)));
   $('subCount').innerText = `共 ${rows.length} 筆`;
   $('subsTable').innerHTML = `
-    <tr><th>時間</th><th>班級</th><th>課次</th><th>學生</th><th>分數</th><th>狀態</th><th>操作</th></tr>
+    <tr><th>時間</th><th>年級·書</th><th>課次</th><th>學生</th><th>分數</th><th>狀態</th><th>操作</th></tr>
     ${rows.map(s => `
       <tr>
         <td>${esc(s.timestamp)}</td>
-        <td>${esc(s.classId)}</td>
+        <td>${esc(bookLabel(s.classId))}</td>
         <td>${esc(s.lessonId)}</td>
         <td><b>${esc(s.studentName)}</b></td>
         <td>${s.score === '' || s.score == null ? '—' : esc(s.score)}</td>
@@ -129,10 +136,10 @@ function renderStudents() {
   });
   const names = Object.keys(map).sort();
   $('studentsTable').innerHTML = `
-    <tr><th>學生</th><th>繳交次數</th><th>班級/課次</th><th>最近繳交</th></tr>
+    <tr><th>學生</th><th>繳交次數</th><th>書·課次</th><th>最近繳交</th></tr>
     ${names.map(n => {
       const list = map[n];
-      const tags = [...new Set(list.map(s => `${s.classId}-${s.lessonId}`))].join('、');
+      const tags = [...new Set(list.map(s => `${bookLabel(s.classId)}-${s.lessonId}`))].join('、');
       const latest = list.map(s => s.timestamp).sort().slice(-1)[0] || '';
       return `<tr><td><b>${esc(n)}</b></td><td>${list.length}</td><td>${esc(tags)}</td><td>${esc(latest)}</td></tr>`;
     }).join('')}`;
@@ -148,28 +155,33 @@ function renderStats() {
   ].map(([l, n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
 
   $('statTable').innerHTML = `
-    <tr><th>班級</th><th>課次</th><th>繳交數</th><th>已評</th><th>平均分</th></tr>
+    <tr><th>年級·書</th><th>課次</th><th>繳交數</th><th>已評</th><th>平均分</th></tr>
     ${DB.stats.map(v => `<tr>
-      <td>${esc(v.classId)}</td><td>${esc(v.lessonId)}</td>
+      <td>${esc(bookLabel(v.classId))}</td><td>${esc(v.lessonId)}</td>
       <td>${v.count}</td><td>${v.graded}</td><td>${v.avg == null ? '—' : v.avg}</td></tr>`).join('') || '<tr><td colspan="5" class="hint">尚無資料</td></tr>'}`;
 }
 
 // ---------------- 課程管理 ----------------
 function renderLessons() {
+  // 書本：依年級分組
+  const grades = {};
+  DB.classes.forEach(c => { const g = c.gradeId || c.classId; (grades[g] = grades[g] || { name: c.gradeName || c.className || g, books: [] }).books.push(c); });
+  const gkeys = Object.keys(grades).sort();
   $('classTable').innerHTML = `
-    <tr><th>班級ID</th><th>班級名稱</th><th>書名/主題</th><th>顯示</th><th></th></tr>
-    ${DB.classes.map(c => `<tr>
-      <td>${esc(c.classId)}</td><td>${esc(c.className)}</td><td>${esc(c.bookTitle)}</td>
+    <tr><th>年級</th><th>書名</th><th>書本ID</th><th>顯示</th><th></th></tr>
+    ${gkeys.map(g => grades[g].books.map((c, i) => `<tr>
+      <td>${i === 0 ? '<b>' + esc(grades[g].name) + '</b>' : ''}</td>
+      <td>${esc(c.bookTitle)}</td><td>${esc(c.classId)}</td>
       <td>${String(c.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick='editClass(${JSON.stringify(c)})'>編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delClass('${esc(c.classId)}')">🗑</button></td>
-    </tr>`).join('')}`;
+    </tr>`).join('')).join('')}`;
 
   $('lessonTable').innerHTML = `
-    <tr><th>班級</th><th>課次</th><th>標題</th><th>課文</th><th>音檔</th><th>顯示</th><th></th></tr>
+    <tr><th>年級·書</th><th>課次</th><th>標題</th><th>課文</th><th>音檔</th><th>顯示</th><th></th></tr>
     ${DB.lessons.map(l => `<tr>
-      <td>${esc(l.classId)}</td><td>${esc(l.lessonId)}</td><td>${esc(l.lessonLabel)}</td>
-      <td>${esc(String(l.text).slice(0, 30))}…</td>
+      <td>${esc(bookLabel(l.classId))}</td><td>${esc(l.lessonId)}</td><td>${esc(l.lessonLabel)}</td>
+      <td>${esc(String(l.text).slice(0, 24))}…</td>
       <td>${(l.audioUrl || l.audioFileId) ? '🎵' : '—'}${String(l.shadowMode).toLowerCase() === 'yes' ? ' 🎧逐句' : ''}</td>
       <td>${String(l.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick='editLesson(${JSON.stringify(l)})'>編輯</button>
@@ -179,34 +191,46 @@ function renderLessons() {
 
 function editClass(c) {
   EDITING_EXISTING = !!(c && c.classId);
-  c = c || { classId: '', className: '', bookTitle: '', active: 'yes', order: 99 };
+  c = c || { classId: '', className: '', bookTitle: '', active: 'yes', order: 99, gradeId: '', gradeName: '' };
+  const gopts = gradeIds().map(g => { const nm = gradeNameByGid(g); return `<option value="${esc(g)}">${nm && nm !== g ? esc(nm) : esc(g)}</option>`; }).join('');
   openModal(`
-    <div class="title-badge">${c.classId ? '編輯' : '新增'}班級</div>
-    <label class="fld">班級ID（例：G7，建立後勿改）</label>
-    <input id="cId" value="${esc(c.classId)}" ${c.classId ? 'readonly' : ''}>
-    <label class="fld">班級名稱</label><input id="cName" value="${esc(c.className)}">
-    <label class="fld">書名/主題</label><input id="cBook" value="${esc(c.bookTitle)}">
+    <div class="title-badge">${c.classId ? '編輯' : '新增'}書本</div>
+    <div class="grid2">
+      <div><label class="fld">年級ID（例：G7）</label>
+        <input id="cGradeId" list="gradeIdList" value="${esc(c.gradeId || '')}" oninput="autoGradeName()" placeholder="G7">
+        <datalist id="gradeIdList">${gopts}</datalist></div>
+      <div><label class="fld">年級名稱（學生看到的標題）</label><input id="cGradeName" value="${esc(c.gradeName || '')}" placeholder="例：G7 錄音教室"></div>
+    </div>
+    <label class="fld">書名（例：Wonder）</label><input id="cBook" value="${esc(c.bookTitle)}">
+    <label class="fld">書本ID（每本書都要不同，例：g7-wonder，建立後勿改）</label>
+    <input id="cId" value="${esc(c.classId)}" ${c.classId ? 'readonly' : ''} placeholder="g7-wonder">
     <div class="grid2">
       <div><label class="fld">排序</label><input id="cOrder" type="number" value="${esc(c.order || 99)}"></div>
       <div><label class="fld">顯示給學生</label>
         <select id="cActive"><option value="yes" ${c.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${c.active === 'no' ? 'selected' : ''}>否</option></select></div>
     </div>
-    <div style="height:14px"></div>
+    <p class="hint">💡 同一個「年級ID」底下可以放多本書（每本書用不同的書本ID）；學生首頁會依年級把書分組。</p>
+    <div style="height:12px"></div>
     <div class="row"><button class="btn btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn btn-primary" onclick="saveClass()">儲存</button></div>`);
 }
 async function saveClass() {
   const id = $('cId').value.trim();
-  if (!id) return alert('請填班級ID');
+  const gradeId = ($('cGradeId').value || '').trim();
+  const gradeName = ($('cGradeName').value || '').trim();
+  if (!id) return alert('請填書本ID');
+  if (!gradeId) return alert('請填年級ID');
   if (!EDITING_EXISTING && DB.classes.some(c => c.classId === id)) {
-    if (!confirm('⚠️ 班級 ID「' + id + '」已經存在！\n\n繼續儲存會「覆蓋」原本的班級（書名、名稱會被改掉；課文不會被刪）。\n\n如果你其實是想新增「另一本書」，請按「取消」，改用不同的班級ID（例如 ' + id + 'b 或 ' + id + '-wonder）。\n\n確定要覆蓋原本的 ' + id + ' 嗎？')) return;
+    if (!confirm('⚠️ 書本ID「' + id + '」已經存在！\n\n繼續會覆蓋原本那本書（書名等會被改掉；課文不會被刪）。\n\n要新增「另一本書」請按取消，改用不同的書本ID。\n\n確定要覆蓋嗎？')) return;
   }
   const r = await apiCall({ action: 'saveClass', password: PW, classId: id,
-    className: $('cName').value, bookTitle: $('cBook').value, order: $('cOrder').value, active: $('cActive').value });
+    className: gradeName || gradeId, bookTitle: $('cBook').value,
+    gradeId: gradeId, gradeName: gradeName || gradeId,
+    order: $('cOrder').value, active: $('cActive').value });
   if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
 }
 async function delClass(id) {
-  if (!confirm('刪除班級 ' + id + '？（不會刪已繳交錄音）')) return;
+  if (!confirm('刪除書本 ' + id + '？（不會刪已繳交錄音）')) return;
   const r = await apiCall({ action: 'deleteClass', password: PW, classId: id });
   if (r.ok) await refreshAll(); else alert('刪除失敗');
 }
@@ -216,11 +240,11 @@ function editLesson(l) {
   l = l || { classId: '', lessonId: '', lessonLabel: '', text: '', audioUrl: '', order: 99, active: 'yes', shadowMode: 'no', marks: '', gapMultiplier: '1.5', audioFileId: '' };
   EDIT_MARKS = parseMarkStr(l.marks);
   const shadowOn = String(l.shadowMode).toLowerCase() === 'yes';
-  const opts = DB.classes.map(c => `<option value="${esc(c.classId)}" ${c.classId === l.classId ? 'selected' : ''}>${esc(c.className || c.classId)}</option>`).join('');
+  const opts = DB.classes.map(c => `<option value="${esc(c.classId)}" ${c.classId === l.classId ? 'selected' : ''}>${esc(bookLabel(c.classId))}</option>`).join('');
   openModal(`
     <div class="title-badge">${l.lessonId && l.classId ? '編輯' : '新增'}課文</div>
     <div class="grid2">
-      <div><label class="fld">班級</label><select id="lClass">${opts}</select></div>
+      <div><label class="fld">書本</label><select id="lClass">${opts}</select></div>
       <div><label class="fld">課次ID（例：ch1，同班不可重複）</label><input id="lId" value="${esc(l.lessonId)}"></div>
     </div>
     <label class="fld">顯示標題（例：CH1）</label><input id="lLabel" value="${esc(l.lessonLabel)}">

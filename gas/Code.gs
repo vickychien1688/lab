@@ -34,11 +34,11 @@ function setup() {
 
   var classes = ss.getActiveSheet();
   classes.setName('Classes');
-  classes.getRange(1, 1, 1, 5)
-    .setValues([['classId', 'className', 'bookTitle', 'active', 'order']]);
-  classes.getRange(2, 1, 2, 5).setValues([
-    ['G7', 'G7 錄音教室', 'The Elephant Man', 'yes', 1],
-    ['G8', 'G8 錄音教室', 'International Ghost', 'yes', 2]
+  classes.getRange(1, 1, 1, 7)
+    .setValues([['classId', 'className', 'bookTitle', 'active', 'order', 'gradeId', 'gradeName']]);
+  classes.getRange(2, 1, 2, 7).setValues([
+    ['G7', 'G7 錄音教室', 'The Elephant Man', 'yes', 1, 'G7', 'G7 錄音教室'],
+    ['G8', 'G8 錄音教室', 'International Ghost', 'yes', 2, 'G8', 'G8 錄音教室']
   ]);
 
   var lessons = ss.insertSheet('Lessons');
@@ -150,9 +150,32 @@ function setPassword(d) {
 //  資料讀取
 // ============================================================
 function getClasses(activeOnly) {
+  ensureClassColumns();
   return readSheet('Classes')
     .filter(function (c) { return c.classId && (!activeOnly || String(c.active).toLowerCase() !== 'no'); })
     .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+}
+// 為「書本(Classes)」補上年級欄位；舊資料自動把 gradeId=classId、gradeName=className
+function ensureClassColumns() {
+  var sh = getSS().getSheetByName('Classes');
+  var lastCol = sh.getLastColumn();
+  var head = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  ['gradeId', 'gradeName'].forEach(function (col) {
+    if (head.indexOf(col) === -1) { lastCol++; sh.getRange(1, lastCol).setValue(col); head.push(col); }
+  });
+  var last = sh.getLastRow();
+  if (last < 2) return;
+  var iCls = head.indexOf('classId'), iName = head.indexOf('className'),
+      iGid = head.indexOf('gradeId'), iGname = head.indexOf('gradeName');
+  var vals = sh.getRange(2, 1, last - 1, lastCol).getValues(), dirty = false;
+  for (var i = 0; i < vals.length; i++) {
+    if (vals[i][iCls] && !vals[i][iGid]) {
+      vals[i][iGid] = vals[i][iCls];
+      if (!vals[i][iGname]) vals[i][iGname] = vals[i][iName] || vals[i][iCls];
+      dirty = true;
+    }
+  }
+  if (dirty) sh.getRange(2, 1, vals.length, lastCol).setValues(vals);
 }
 function getLessons(classId, activeOnly) {
   return readSheet('Lessons')
@@ -226,9 +249,11 @@ function getAudio(fileId) {
 }
 
 function saveClass(d) {
+  ensureClassColumns();
   return upsert('Classes', 'classId', d.classId, {
-    classId: d.classId, className: d.className || d.classId,
-    bookTitle: d.bookTitle || '', active: d.active || 'yes', order: d.order || 99
+    classId: d.classId, className: d.className || d.gradeName || d.classId,
+    bookTitle: d.bookTitle || '', active: d.active || 'yes', order: d.order || 99,
+    gradeId: d.gradeId || d.classId, gradeName: d.gradeName || d.className || d.classId
   });
 }
 function saveLesson(d) {

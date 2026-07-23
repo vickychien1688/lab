@@ -41,7 +41,7 @@
     <!-- 學生錄音 -->
     <div class="card tabpane" id="pane-subs">
       <div class="toolbar">
-        <select id="fClass" onchange="renderSubs()" style="max-width:180px"><option value="">全部班級</option></select>
+        <select id="fClass" onchange="renderSubs()" style="max-width:200px"><option value="">全部書本</option></select>
         <select id="fLesson" onchange="renderSubs()" style="max-width:180px"><option value="">全部課次</option></select>
         <input id="fName" placeholder="搜尋學生姓名" oninput="renderSubs()" style="max-width:200px">
         <span class="spacer"></span>
@@ -66,8 +66,8 @@
     <!-- 課程管理 -->
     <div class="card tabpane hidden" id="pane-lessons">
       <div class="toolbar">
-        <b>班級</b><span class="spacer"></span>
-        <button class="btn btn-primary btn-sm" onclick="editClass()">＋ 新增班級</button>
+        <b>年級 / 書本</b><span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" onclick="editClass()">＋ 新增書本</button>
       </div>
       <div style="overflow-x:auto"><table id="classTable"></table></div>
       <div class="toolbar" style="margin-top:24px">

@@ -61,7 +61,10 @@ canvas { width: 100%; height: 100%; display: block; }
 
 .status { margin-top: 14px; font-size: 14px; color: var(--primary); font-weight: 700; text-align: center; }
 
-.class-links { display: grid; gap: 14px; margin-top: 8px; }
+.class-links { display: grid; gap: 12px; margin-top: 8px; }
+.grade-title { color: var(--primary); font-size: 13px; font-weight: 800; letter-spacing: 1px;
+  margin: 18px 0 4px; padding-left: 9px; border-left: 3px solid var(--primary); }
+.grade-title:first-child { margin-top: 4px; }
 .class-link {
   display: flex; justify-content: space-between; align-items: center;
   padding: 18px 20px; background: var(--card2); border: 1px solid var(--line);
