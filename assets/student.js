@@ -8,6 +8,26 @@
   let lessons = [];
   let recStartMs = 0;
 
+  // ---- 偵測 LINE / FB 等內建瀏覽器（常無法錄音）----
+  const UA = navigator.userAgent || '';
+  const isIOS = () => /iPhone|iPad|iPod/i.test(UA);
+  const inApp = () => /\bLine\/[\d.]+/i.test(UA) || /FBAN|FBAV|FB_IAB|Instagram|Messenger|MicroMessenger/i.test(UA);
+  (function warnInApp() {
+    if (!inApp()) return;
+    const steps = isIOS()
+      ? '📱 <b>iPhone</b>：點畫面<b>右下角</b>的分享圖示，選「<b>用 Safari 開啟</b>」'
+      : '🤖 <b>Android</b>：點右上角選單「⋮」，選「<b>用其他瀏覽器開啟</b>」';
+    const b = el('inappWarn');
+    b.innerHTML = '⚠️ <b>你正在用 LINE 開啟，通常無法錄音！</b><br>請改用手機瀏覽器（Safari／Chrome）：<br>' + steps +
+      '<br>或按 <button id="copyUrlBtn" class="btn" style="background:#f6ad55;color:#3a2a12;padding:6px 12px;font-size:13px;margin-top:8px">📋 複製網址</button> 再貼到瀏覽器網址列打開。';
+    b.classList.remove('hidden');
+    const c = el('copyUrlBtn');
+    if (c) c.onclick = async () => {
+      try { await navigator.clipboard.writeText(location.href); c.innerText = '✅ 已複製'; }
+      catch (e) { prompt('複製這個網址，貼到 Safari／Chrome：', location.href); }
+    };
+  })();
+
   // ---- 載入該班課程 ----
   (async () => {
     try {
@@ -118,7 +138,9 @@
         el('status').innerText = 'RECORDING…';
       }
     } catch (e) {
-      alert('麥克風錯誤 Mic Error: ' + (e.message || e));
+      alert(inApp()
+        ? '無法使用麥克風。\n\n請改用手機的 Safari 或 Chrome 開啟這個網頁，不要用 LINE 內建瀏覽器。\n（可用畫面上的「複製網址」貼到瀏覽器）'
+        : ('麥克風錯誤 Mic Error: ' + (e.message || e)));
     }
   };
 
@@ -236,7 +258,9 @@
       };
       draw();
     } catch (e) {
-      el('micHint').innerText = '❌ 拿不到麥克風，請按瀏覽器的「允許」麥克風';
+      el('micHint').innerText = inApp()
+        ? '❌ LINE 內建瀏覽器無法錄音，請改用 Safari／Chrome 開啟（見上方橘色提示）'
+        : '❌ 拿不到麥克風，請按瀏覽器的「允許」麥克風';
       el('micHint').style.color = '#e53e3e';
     }
   };
