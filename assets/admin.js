@@ -203,13 +203,11 @@ function editClass(c) {
   openModal(`
     <div class="title-badge">${c.classId ? '編輯' : '新增'}書本</div>
     <label class="fld">書名（例：Wonder）</label><input id="cBook" value="${esc(c.bookTitle)}" placeholder="Wonder">
-    <div class="grid2">
-      <div><label class="fld">排序（數字小的排前面，可不改）</label><input id="cOrder" type="number" value="${esc(c.order || 99)}"></div>
-      <div><label class="fld">顯示給學生</label>
-        <select id="cActive"><option value="yes" ${c.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${c.active === 'no' ? 'selected' : ''}>否</option></select></div>
-    </div>
+    <label class="fld">顯示給學生</label>
+    <select id="cActive"><option value="yes" ${c.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${c.active === 'no' ? 'selected' : ''}>否</option></select>
     <p class="hint">💡 建好書之後，到下方「課文 / 示範音檔」幫這本書加 Chapter。要派給哪個班級，去「📌 派作業」選。</p>
     <input type="hidden" id="cId" value="${esc(c.classId)}">
+    <input type="hidden" id="cOrder" value="${esc(c.order || '')}">
     <div style="height:12px"></div>
     <div class="row"><button class="btn btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn btn-primary" onclick="saveClass()">儲存</button></div>`);
@@ -220,10 +218,12 @@ async function saveClass() {
   // 書本ID 由系統自動產生，老師不用管
   let id = $('cId').value.trim();
   if (!id) id = 'b' + Date.now();
+  // 排序自動：新書用「建立時間（秒）」，先建的排前面；既有的書維持原順序
+  const order = $('cOrder').value || Math.floor(Date.now() / 1000);
   const r = await apiCall({ action: 'saveClass', password: PW, classId: id,
     className: title, bookTitle: title,
     gradeId: id, gradeName: title,
-    order: $('cOrder').value, active: $('cActive').value });
+    order, active: $('cActive').value });
   if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
 }
 async function delClass(id) {
@@ -249,11 +249,9 @@ function editLesson(l) {
     <input type="hidden" id="lAudioFileId" value="${esc(l.audioFileId || '')}">
     <div id="audioStatus" class="hint" style="margin:6px 0">${l.audioFileId ? '✅ 已有上傳的音檔（可直接用，或重新上傳覆蓋）' : '從電腦選 mp3/m4a 直接上傳；或改用下面的網址。'}</div>
     <input id="lAudio" value="${esc(l.audioUrl)}" onblur="reloadMarkAudio()" placeholder="或貼音檔網址（相對路徑 G7/x.mp3 或 https://…）">
-    <div class="grid2">
-      <div><label class="fld">排序</label><input id="lOrder" type="number" value="${esc(l.order || 99)}"></div>
-      <div><label class="fld">顯示給學生</label>
-        <select id="lActive"><option value="yes" ${l.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${l.active === 'no' ? 'selected' : ''}>否</option></select></div>
-    </div>
+    <label class="fld">顯示給學生</label>
+    <select id="lActive"><option value="yes" ${l.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${l.active === 'no' ? 'selected' : ''}>否</option></select>
+    <input type="hidden" id="lOrder" value="${esc(l.order || '')}">
 
     <div style="border-top:1px solid var(--line); margin-top:16px; padding-top:12px">
       <label class="fld" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:0 0 6px">
@@ -365,7 +363,7 @@ async function saveLesson() {
   const r = await apiCall({ action: 'saveLesson', password: PW, classId, lessonId,
     lessonLabel: $('lLabel').value, text: $('lText').value, audioUrl: $('lAudio').value,
     audioFileId: ($('lAudioFileId') && $('lAudioFileId').value) || '',
-    order: $('lOrder').value, active: $('lActive').value,
+    order: $('lOrder').value || Math.floor(Date.now() / 1000), active: $('lActive').value,
     shadowMode: shadowOn ? 'yes' : 'no',
     marks: EDIT_MARKS.join(','),
     gapMultiplier: ($('lGapMult') && $('lGapMult').value) || '1.5' });
