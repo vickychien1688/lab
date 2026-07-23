@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>我的作業 · PAS English Lab</title>
+  <title>我的作業 · 愉閱空間 Our Reading Space</title>
   <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
@@ -40,8 +40,8 @@
           const graded = a.status === 'reviewed' && a.score !== '' && a.score != null;
           const badge = graded ? `<span class="pill reviewed">✅ 已評分：${esc(a.score)} 分</span>`
             : (a.done ? '<span class="pill new">📨 已繳交・等待老師評分</span>'
-              : '<span class="pill" style="background:#333a45;color:#98a2b3">尚未錄音</span>');
-          const cmt = graded && a.comment ? `<div style="margin-top:8px;color:#e6ebf2;background:#2d333d;border:1px solid #444;border-radius:8px;padding:10px 12px"><b style="color:var(--primary)">老師評語：</b>${esc(a.comment)}</div>` : '';
+              : '<span class="pill" style="background:#333a45;color:var(--muted)">尚未錄音</span>');
+          const cmt = graded && a.comment ? `<div style="margin-top:8px;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px 12px"><b style="color:var(--primary)">老師評語：</b>${esc(a.comment)}</div>` : '';
           const due = a.dueDate ? ` <small style="color:var(--muted)">· 截止 ${esc(a.dueDate)}</small>` : '';
           const link = `student.html?class=${encodeURIComponent(a.classId)}&lesson=${encodeURIComponent(a.lessonId)}&assign=${encodeURIComponent(a.assignId)}`;
           return `<div style="background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px">
