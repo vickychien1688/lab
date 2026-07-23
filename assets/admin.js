@@ -67,23 +67,27 @@ function bookLabel(id) { const b = bookById(id); return b ? (b.bookTitle || b.cl
 
 // ---------------- 學生錄音 ----------------
 function populateFilters() {
-  const fc = $('fClass'), fl = $('fLesson');
+  const fr = $('fRoom'), fc = $('fClass'), fl = $('fLesson');
+  if (fr) fr.innerHTML = '<option value="">全部班級</option>' + DB.rooms.map(r => `<option value="${esc(r.roomId)}">${esc(r.roomName)}</option>`).join('');
   fc.innerHTML = '<option value="">全部書本</option>' + DB.classes.map(c => `<option value="${esc(c.classId)}">${esc(bookLabel(c.classId))}</option>`).join('');
   fl.innerHTML = '<option value="">全部課次</option>' + uniqueLessons().map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
 }
 function uniqueLessons() { return [...new Set(DB.submissions.map(s => s.lessonId).filter(Boolean))]; }
 
 function renderSubs() {
+  const fr = $('fRoom') ? $('fRoom').value : '';
   const fc = $('fClass').value, fl = $('fLesson').value, fn = ($('fName').value || '').toLowerCase();
   const rows = DB.submissions.filter(s =>
+    (!fr || s.roomId === fr) &&
     (!fc || s.classId === fc) && (!fl || s.lessonId === fl) &&
     (!fn || String(s.studentName).toLowerCase().includes(fn)));
   $('subCount').innerText = `共 ${rows.length} 筆`;
   $('subsTable').innerHTML = `
-    <tr><th>時間</th><th>書</th><th>課次</th><th>學生</th><th>分數</th><th>狀態</th><th>操作</th></tr>
+    <tr><th>時間</th><th>班級</th><th>書</th><th>課次</th><th>學生</th><th>分數</th><th>狀態</th><th>操作</th></tr>
     ${rows.map(s => `
       <tr>
         <td>${esc(s.timestamp)}</td>
+        <td>${s.roomId ? esc(roomName(s.roomId)) : '—'}</td>
         <td>${esc(bookLabel(s.classId))}</td>
         <td>${esc(lessonLabelOf(s.classId, s.lessonId))}</td>
         <td><b>${esc(s.studentName)}</b></td>
@@ -393,26 +397,45 @@ function fillRoomSelects() {
   const opts = DB.rooms.map(r => `<option value="${esc(r.roomId)}">${esc(r.roomName)}（${esc(r.code)}）</option>`).join('');
   ['rRoom', 'aRoom'].forEach(id => { const el = $(id); if (el) { const cur = el.value; el.innerHTML = opts || '<option value="">（尚無班級，先到「班級」分頁新增）</option>'; if (cur) el.value = cur; } });
 }
+function teacherLabel(u) {
+  if (!u) return '共用（所有老師）';
+  const t = (DB.teachers || []).find(x => x.username === u);
+  return t ? (t.name || u) : u;
+}
 function renderRooms() {
   const t = $('roomTable'); if (!t) return;
   t.innerHTML = `
-    <tr><th>班級名稱</th><th>班級代碼</th><th>學生數</th><th>顯示</th><th></th></tr>
+    <tr><th>班級名稱</th><th>班級代碼</th><th>負責老師</th><th>學生數</th><th>顯示</th><th></th></tr>
     ${DB.rooms.map(r => `<tr>
       <td><b>${esc(r.roomName)}</b></td>
       <td><span class="pill reviewed">${esc(r.code)}</span></td>
+      <td>${esc(teacherLabel(r.owner))}</td>
       <td>${DB.students.filter(s => s.roomId === r.roomId).length}</td>
       <td>${String(r.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick='editRoom(${JSON.stringify(r)})'>編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delRoom('${esc(r.roomId)}')">🗑</button></td>
-    </tr>`).join('') || '<tr><td colspan="5" class="hint">還沒有班級，按右上「＋ 新增班級」。</td></tr>'}`;
+    </tr>`).join('') || '<tr><td colspan="6" class="hint">還沒有班級，按右上「＋ 新增班級」。</td></tr>'}`;
 }
 function editRoom(r) {
-  r = r || { roomId: '', roomName: '', code: '', active: 'yes' };
+  const isNew = !(r && r.roomId);
+  r = r || { roomId: '', roomName: '', code: '', active: 'yes', owner: '' };
+  // 負責老師：主帳號可指派；一般老師新增的班自動掛在自己名下
+  let ownerField;
+  if (ME.role === 'admin') {
+    const opts = ['<option value="">共用（所有老師）</option>']
+      .concat((DB.teachers || []).map(t => `<option value="${esc(t.username)}" ${t.username === r.owner ? 'selected' : ''}>${esc(t.name || t.username)}</option>`))
+      .join('');
+    ownerField = `<label class="fld">負責老師（老師只會看到自己負責的班）</label><select id="kOwner">${opts}</select>`;
+  } else {
+    const owner = isNew ? USER : (r.owner || '');
+    ownerField = `<input type="hidden" id="kOwner" value="${esc(owner)}">`;
+  }
   openModal(`
     <div class="title-badge">${r.roomId ? '編輯' : '新增'}班級</div>
     <label class="fld">班級名稱</label><input id="kName" value="${esc(r.roomName)}" placeholder="例：週三晚班">
     <label class="fld">班級代碼（發給學生登入用，英數字，例 abc123）</label>
     <input id="kCode" value="${esc(r.code)}" placeholder="abc123">
+    ${ownerField}
     <label class="fld">顯示</label>
     <select id="kActive"><option value="yes" ${r.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${r.active === 'no' ? 'selected' : ''}>否</option></select>
     <input type="hidden" id="kId" value="${esc(r.roomId)}">
@@ -426,7 +449,7 @@ async function saveRoom() {
   if (!code) return alert('請填班級代碼');
   if (DB.rooms.some(r => r.roomId !== $('kId').value && String(r.code).trim().toLowerCase() === code.toLowerCase()))
     return alert('這個班級代碼已被其他班級使用，請換一個');
-  const r = await apiCall({ action: 'saveRoom', password: PW, roomId: $('kId').value, roomName: name, code, active: $('kActive').value });
+  const r = await apiCall({ action: 'saveRoom', password: PW, roomId: $('kId').value, roomName: name, code, owner: ($('kOwner') && $('kOwner').value) || '', active: $('kActive').value });
   if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
 }
 async function delRoom(id) {

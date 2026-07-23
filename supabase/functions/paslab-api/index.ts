@@ -55,7 +55,7 @@ const lessonOut = (l: any) => ({
   shadowMode: l.shadow_mode ? "yes" : "no", marks: l.marks || "",
   gapMultiplier: l.gap_multiplier || "", audioFileId: "",
 });
-const roomOut = (r: any) => ({ roomId: r.id, roomName: r.name, code: r.code, active: yn(r.active), order: r.sort });
+const roomOut = (r: any) => ({ roomId: r.id, roomName: r.name, code: r.code, active: yn(r.active), order: r.sort, owner: r.owner || "" });
 const stuOut = (s: any) => ({ studentId: s.id, roomId: s.room_id, name: s.name, pin: s.pin || "", active: yn(s.active), order: s.sort });
 const asnOut = (a: any) => ({
   assignId: a.id, roomId: a.room_id, classId: a.book_id, lessonId: a.lesson_id,
@@ -201,7 +201,8 @@ async function getAudio(d: any) {
 // ---------- 後台 ----------
 async function adminData(d: any) {
   const me = (await authInfo(d)) || { role: "admin", name: "主帳號", username: "" };
-  const [books, lessons, subs, rooms, studs, asns] = await Promise.all([
+  const isAdmin = me.role === "admin";
+  const [books, lessons, subsAll, roomsAll, studsAll, asnsAll] = await Promise.all([
     getBooks(false),
     getLessons(undefined, false),
     q(sb.from("paslab_submissions").select("*").order("ts", { ascending: false })),
@@ -209,8 +210,17 @@ async function adminData(d: any) {
     q(sb.from("paslab_students").select("*").order("sort")),
     q(sb.from("paslab_assignments").select("*").order("sort")),
   ]);
+  // 依「負責老師」過濾：一般老師只看到自己負責的班（owner=自己）與共用班（owner 空白）
+  const rooms = isAdmin
+    ? (roomsAll as any[])
+    : (roomsAll as any[]).filter((r) => !r.owner || String(r.owner).toLowerCase() === String(me.username).toLowerCase());
+  const allowed = new Set(rooms.map((r: any) => r.id));
+  const studs = isAdmin ? (studsAll as any[]) : (studsAll as any[]).filter((s) => allowed.has(s.room_id));
+  const asns = isAdmin ? (asnsAll as any[]) : (asnsAll as any[]).filter((a) => allowed.has(a.room_id));
+  const subs = isAdmin ? (subsAll as any[]) : (subsAll as any[]).filter((s) => allowed.has(s.room_id));
+
   const stats: Record<string, any> = {};
-  for (const s of subs as any[]) {
+  for (const s of subs) {
     const k = s.book_id + "|" + s.lesson_id;
     stats[k] ??= { classId: s.book_id, lessonId: s.lesson_id, count: 0, graded: 0, scoreSum: 0 };
     stats[k].count++;
@@ -218,15 +228,15 @@ async function adminData(d: any) {
     if (s.score !== "" && s.score != null && !isNaN(n)) { stats[k].graded++; stats[k].scoreSum += n; }
   }
   const statList = Object.values(stats).map((v: any) => ({ ...v, avg: v.graded ? Math.round((v.scoreSum / v.graded) * 10) / 10 : null }));
-  const teachers = me.role === "admin"
+  const teachers = isAdmin
     ? (await q(sb.from("paslab_teachers").select("*"))).map((t: any) => ({
         username: t.username, password: t.password, name: t.name, role: t.role, active: yn(t.active),
       }))
     : [];
   return {
-    ok: true, classes: books, lessons, submissions: (subs as any[]).map(subOut), stats: statList,
-    rooms: (rooms as any[]).map(roomOut), students: (studs as any[]).map(stuOut),
-    assignments: (asns as any[]).map(asnOut), me, teachers,
+    ok: true, classes: books, lessons, submissions: subs.map(subOut), stats: statList,
+    rooms: rooms.map(roomOut), students: studs.map(stuOut),
+    assignments: asns.map(asnOut), me, teachers,
   };
 }
 
@@ -246,7 +256,7 @@ const deleteLesson = (d: any) =>
   q(sb.from("paslab_lessons").delete().eq("book_id", d.classId).eq("lesson_id", d.lessonId).select()).then(() => ({ ok: true }));
 const saveRoom = (d: any) => {
   const id = d.roomId || newId("r");
-  return q(sb.from("paslab_rooms").upsert({ id, name: d.roomName || id, code: String(d.code || "").trim(), active: toBool(d.active), sort: Number(d.order || 99) }).select())
+  return q(sb.from("paslab_rooms").upsert({ id, name: d.roomName || id, code: String(d.code || "").trim(), active: toBool(d.active), sort: Number(d.order || 99), owner: String(d.owner ?? "").trim() }).select())
     .then(() => ({ ok: true }));
 };
 const deleteRoom = (d: any) =>

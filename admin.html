@@ -83,6 +83,7 @@
     <!-- 學生錄音 -->
     <div class="card tabpane hidden" id="pane-subs">
       <div class="toolbar">
+        <select id="fRoom" onchange="renderSubs()" style="max-width:180px"><option value="">全部班級</option></select>
         <select id="fClass" onchange="renderSubs()" style="max-width:200px"><option value="">全部書本</option></select>
         <select id="fLesson" onchange="renderSubs()" style="max-width:180px"><option value="">全部課次</option></select>
         <input id="fName" placeholder="搜尋學生姓名" oninput="renderSubs()" style="max-width:200px">
