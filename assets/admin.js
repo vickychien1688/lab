@@ -85,7 +85,7 @@ function renderSubs() {
       <tr>
         <td>${esc(s.timestamp)}</td>
         <td>${esc(bookLabel(s.classId))}</td>
-        <td>${esc(s.lessonId)}</td>
+        <td>${esc(lessonLabelOf(s.classId, s.lessonId))}</td>
         <td><b>${esc(s.studentName)}</b></td>
         <td>${s.score === '' || s.score == null ? '—' : esc(s.score)}</td>
         <td><span class="pill ${s.status === 'reviewed' ? 'reviewed' : 'new'}">${s.status === 'reviewed' ? '已評' : '待評'}</span></td>
@@ -114,7 +114,7 @@ async function playSub(fileId, btn) {
 function gradeSub(row) {
   const s = DB.submissions.find(x => x._row === row);
   openModal(`
-    <div class="title-badge">✍ 評分：${esc(s.studentName)} / ${esc(s.classId)}-${esc(s.lessonId)}</div>
+    <div class="title-badge">✍ 評分：${esc(s.studentName)} / ${esc(bookLabel(s.classId))}·${esc(lessonLabelOf(s.classId, s.lessonId))}</div>
     <label class="fld">分數（0–100，可留空）</label>
     <input id="gScore" type="number" min="0" max="100" value="${s.score === '' ? '' : esc(s.score)}">
     <label class="fld">評語</label>
@@ -150,7 +150,7 @@ function renderStudents() {
     <tr><th>學生</th><th>繳交次數</th><th>書·課次</th><th>最近繳交</th></tr>
     ${names.map(n => {
       const list = map[n];
-      const tags = [...new Set(list.map(s => `${bookLabel(s.classId)}-${s.lessonId}`))].join('、');
+      const tags = [...new Set(list.map(s => `${bookLabel(s.classId)}-${lessonLabelOf(s.classId, s.lessonId)}`))].join('、');
       const latest = list.map(s => s.timestamp).sort().slice(-1)[0] || '';
       return `<tr><td><b>${esc(n)}</b></td><td>${list.length}</td><td>${esc(tags)}</td><td>${esc(latest)}</td></tr>`;
     }).join('')}`;
@@ -168,7 +168,7 @@ function renderStats() {
   $('statTable').innerHTML = `
     <tr><th>書</th><th>課次</th><th>繳交數</th><th>已評</th><th>平均分</th></tr>
     ${DB.stats.map(v => `<tr>
-      <td>${esc(bookLabel(v.classId))}</td><td>${esc(v.lessonId)}</td>
+      <td>${esc(bookLabel(v.classId))}</td><td>${esc(lessonLabelOf(v.classId, v.lessonId))}</td>
       <td>${v.count}</td><td>${v.graded}</td><td>${v.avg == null ? '—' : v.avg}</td></tr>`).join('') || '<tr><td colspan="5" class="hint">尚無資料</td></tr>'}`;
 }
 
@@ -240,11 +240,9 @@ function editLesson(l) {
   const opts = DB.classes.map(c => `<option value="${esc(c.classId)}" ${c.classId === l.classId ? 'selected' : ''}>${esc(bookLabel(c.classId))}</option>`).join('');
   openModal(`
     <div class="title-badge">${l.lessonId && l.classId ? '編輯' : '新增'}課文</div>
-    <div class="grid2">
-      <div><label class="fld">書本</label><select id="lClass">${opts}</select></div>
-      <div><label class="fld">課次ID（例：ch1，同班不可重複）</label><input id="lId" value="${esc(l.lessonId)}"></div>
-    </div>
-    <label class="fld">顯示標題（例：CH1）</label><input id="lLabel" value="${esc(l.lessonLabel)}">
+    <label class="fld">書本</label><select id="lClass" ${l.lessonId ? 'disabled' : ''}>${opts}</select>
+    <input type="hidden" id="lId" value="${esc(l.lessonId)}">
+    <label class="fld">章節標題（例：CH1）</label><input id="lLabel" value="${esc(l.lessonLabel)}" placeholder="CH1">
     <label class="fld">課文</label><textarea id="lText">${esc(l.text)}</textarea>
     <label class="fld">示範音檔（擇一即可）</label>
     <input type="file" id="lAudioFile" accept="audio/*" onchange="uploadAudioFile()" style="padding:8px">
@@ -357,11 +355,12 @@ function renderMarks() {
     EDIT_MARKS.map((t, i) => `<span class="pill reviewed" style="margin:3px; display:inline-block">${i + 1}. ${fmtT(t)} <a onclick="removeMark(${i})" style="cursor:pointer;color:var(--danger);font-weight:700">✕</a></span>`).join('');
 }
 async function saveLesson() {
-  const classId = $('lClass').value, lessonId = $('lId').value.trim();
-  if (!classId || !lessonId) return alert('請選班級並填課次ID');
-  if (!EDITING_EXISTING && DB.lessons.some(l => l.classId === classId && l.lessonId === lessonId)) {
-    if (!confirm('⚠️ 這個班級已經有課次ID「' + lessonId + '」，繼續會覆蓋原本那一課的內容。\n\n要新增「另一課」請按取消，改用不同的課次ID（例如 ch2、ch3）。\n\n確定要覆蓋嗎？')) return;
-  }
+  const classId = $('lClass').value;
+  if (!classId) return alert('請選書本');
+  if (!($('lLabel').value || '').trim()) return alert('請填章節標題（例：CH1）');
+  // 課次ID 由系統自動產生，老師不用管
+  let lessonId = $('lId').value.trim();
+  if (!lessonId) lessonId = 'l' + Date.now();
   const shadowOn = $('lShadow') && $('lShadow').checked;
   const r = await apiCall({ action: 'saveLesson', password: PW, classId, lessonId,
     lessonLabel: $('lLabel').value, text: $('lText').value, audioUrl: $('lAudio').value,
