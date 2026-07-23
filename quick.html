@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>簡易使用手冊 · PAS English Lab</title>
+  <style>
+    :root { --primary:#00c46a; --bg:#0f1216; --card:#1b1f27; --card2:#242a34; --text:#e6ebf2; --muted:#98a2b3; --line:#333b47; --warn:#f6ad55; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text);
+      font-family:"Segoe UI",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif; line-height:1.8; }
+    .wrap { max-width:720px; margin:0 auto; padding:32px 20px 70px; }
+    header { text-align:center; margin-bottom:14px; }
+    .brand { letter-spacing:3px; color:var(--muted); font-size:12px; }
+    h1 { font-size:28px; margin:6px 0 2px; }
+    .sub { color:var(--muted); margin-top:0; }
+    .toolbar { display:flex; gap:10px; justify-content:center; margin:14px 0 22px; flex-wrap:wrap; }
+    .btn { background:var(--primary); color:#04120a; border:none; border-radius:10px; padding:10px 18px;
+      font-weight:700; font-size:15px; cursor:pointer; text-decoration:none; display:inline-block; }
+    .btn.ghost { background:var(--card2); color:var(--text); border:1px solid var(--line); }
+    section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px 22px; margin-bottom:16px; }
+    h2 { font-size:20px; margin:0 0 10px; }
+    .step { display:flex; gap:12px; align-items:flex-start; margin:10px 0; }
+    .step .n { background:var(--primary); color:#04120a; min-width:28px; height:28px; border-radius:50%;
+      display:inline-flex; align-items:center; justify-content:center; font-weight:800; flex:none; margin-top:2px; }
+    .step b { color:#fff; }
+    .kbd { background:var(--card2); border:1px solid var(--line); border-radius:6px; padding:1px 8px; font-weight:700; white-space:nowrap; }
+    .callout { border-left:4px solid var(--warn); background:rgba(246,173,85,.10); padding:10px 14px; border-radius:8px; margin:12px 0; font-size:15px; }
+    .url { background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin:8px 0;
+      font-weight:700; color:var(--primary); word-break:break-all; }
+    .muted { color:var(--muted); font-size:14px; }
+    footer { text-align:center; color:var(--muted); font-size:13px; margin-top:24px; }
+    a { color:var(--primary); }
+    @media print {
+      body { background:#fff; color:#111; }
+      .toolbar { display:none; }
+      section, .url, .callout { border-color:#ccc; background:#fff !important; -webkit-print-color-adjust:exact; break-inside:avoid; }
+      .step .n { background:#111; color:#fff; }
+      h2 { color:#111; } a { color:#111; } .url { color:#111; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">PAS ENGLISH LAB</div>
+    <h1>簡易使用手冊</h1>
+    <p class="sub">5 分鐘上手 · 詳細說明請看 <a href="manual.html">完整手冊</a></p>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn" onclick="window.print()">🖨 列印</button>
+    <a class="btn ghost" href="admin.html">老師後台 →</a>
+    <a class="btn ghost" href="manual.html">完整手冊 →</a>
+  </div>
+
+  <section>
+    <h2>👩‍🏫 老師：派一份作業（5 步）</h2>
+    <div class="step"><span class="n">1</span><div><b>登入後台</b><div class="url">read.our-reading-space.com/admin.html</div><span class="muted">輸入自己的帳號＋密碼。</span></div></div>
+    <div class="step"><span class="n">2</span><div><b>📚 資源庫：建書＋章節</b><br><span class="muted">＋新增書本 → 填書名。＋新增課文 → 選書、課次ID（ch1）、貼課文、<b>選擇檔案上傳音檔</b> → 儲存。</span></div></div>
+    <div class="step"><span class="n">3</span><div><b>🏫 班級：建班級拿代碼</b><br><span class="muted">＋新增班級 → 填名稱＋自訂一組班級代碼（例 G7-2026）。代碼發給學生。</span></div></div>
+    <div class="step"><span class="n">4</span><div><b>👥 學生名單：加學生</b><br><span class="muted">選班級 → 「批次貼上名單」一行一個名字，一次貼完。</span></div></div>
+    <div class="step"><span class="n">5</span><div><b>📌 派作業</b><br><span class="muted">選班級 → ＋指派作業 → 選書、選課次 → 儲存。完成！</span></div></div>
+  </section>
+
+  <section>
+    <h2>✍️ 老師：批改</h2>
+    <div class="step"><span class="n">1</span><div><b>🎧 學生錄音</b> → 按 <span class="kbd">▶ 播放</span> 聽</div></div>
+    <div class="step"><span class="n">2</span><div>按 <span class="kbd">✍ 評分</span> → 填分數＋評語 → 儲存<br><span class="muted">學生登入就會看到自己的分數和評語。</span></div></div>
+  </section>
+
+  <section>
+    <h2>👩‍🎓 學生：交作業（3 步）</h2>
+    <div class="step"><span class="n">1</span><div><b>用 Safari 或 Chrome 打開</b><div class="url">read.our-reading-space.com</div></div></div>
+    <div class="step"><span class="n">2</span><div><b>輸入班級代碼 → 點自己的名字</b>登入</div></div>
+    <div class="step"><span class="n">3</span><div>點作業的 <span class="kbd">🎤 去錄音</span> → <span class="kbd">🔴 START</span> 跟著唸 → <span class="kbd">⏹ STOP</span> → <span class="kbd">📤 SEND</span><br><span class="muted">老師改完後，回「我的作業」看分數與評語。</span></div></div>
+    <div class="callout">🔴 <b>不要在 LINE 裡直接開</b>（不能錄音）！iPhone：右下分享 →「用 Safari 開啟」；Android：右上「⋮」→「用其他瀏覽器開啟」。第一次錄音請按「允許」麥克風。</div>
+  </section>
+
+  <footer>PAS English Lab · 簡易手冊　|　更多功能（逐句跟讀、老師帳號…）見 <a href="manual.html">完整手冊</a></footer>
+</div>
+</body>
+</html>
