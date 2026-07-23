@@ -66,6 +66,7 @@
 
   el('startBtn').onclick = async () => {
     if (!el('studentName').value.trim()) return alert('請先輸入名字 Enter Name!');
+    stopMicTest();
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') await audioCtx.resume();
@@ -202,6 +203,50 @@
       btn.disabled = false;
     }
   };
+
+  // ---- 錄音前測試麥克風（讓學生確認有收音）----
+  let testStream = null, testCtx = null, testRaf = null;
+  el('testMicBtn').onclick = async () => {
+    if (testStream) { stopMicTest(); return; }
+    try {
+      testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      testCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const an = testCtx.createAnalyser();
+      testCtx.createMediaStreamSource(testStream).connect(an);
+      el('testMicBtn').innerText = '⏹ 停止測試';
+      const canvas = el('visualizer'), ctx = canvas.getContext('2d');
+      const data = new Uint8Array(an.frequencyBinCount);
+      const draw = () => {
+        testRaf = requestAnimationFrame(draw);
+        an.getByteTimeDomainData(data);
+        let peak = 0;
+        for (let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i] - 128));
+        const on = peak > 6;
+        el('micHint').innerText = on ? '✅ 有收到你的聲音！' : '🎤 對著麥克風說話看看…';
+        el('micHint').style.color = on ? '#00ff88' : '#8a93a2';
+        ctx.fillStyle = '#111'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 2; ctx.strokeStyle = on ? '#00ff88' : '#4a5568'; ctx.beginPath();
+        let x = 0; const slice = canvas.width / data.length;
+        for (let i = 0; i < data.length; i++) {
+          const v = data[i] / 128.0, y = v * canvas.height / 2;
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          x += slice;
+        }
+        ctx.stroke();
+      };
+      draw();
+    } catch (e) {
+      el('micHint').innerText = '❌ 拿不到麥克風，請按瀏覽器的「允許」麥克風';
+      el('micHint').style.color = '#e53e3e';
+    }
+  };
+  function stopMicTest() {
+    if (testRaf) { cancelAnimationFrame(testRaf); testRaf = null; }
+    if (testStream) { testStream.getTracks().forEach(t => t.stop()); testStream = null; }
+    if (testCtx) { try { testCtx.close(); } catch (e) {} testCtx = null; }
+    const b = el('testMicBtn'); if (b) b.innerText = '🎤 測試麥克風';
+    const h = el('micHint'); if (h) { h.innerText = '按這裡先確認麥克風有收到你的聲音'; h.style.color = '#8a93a2'; }
+  }
 
   // ---- 工具 ----
   function drawWave() {
