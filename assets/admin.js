@@ -61,12 +61,9 @@ function showTab(t) {
   $('pane-' + t).classList.remove('hidden');
 }
 
-// 書本/年級小工具
+// 書本小工具
 function bookById(id) { return DB.classes.find(c => c.classId === id); }
-function bookLabel(id) { const b = bookById(id); return b ? ((b.gradeName ? b.gradeName + ' · ' : '') + (b.bookTitle || b.classId)) : id; }
-function gradeNameByGid(g) { const b = DB.classes.find(c => (c.gradeId || c.classId) === g); return b ? (b.gradeName || g) : g; }
-function gradeIds() { return [...new Set(DB.classes.map(c => c.gradeId || c.classId).filter(Boolean))]; }
-function autoGradeName() { const g = ($('cGradeId').value || '').trim(); const nm = gradeNameByGid(g); if (nm && nm !== g && !($('cGradeName').value || '').trim()) $('cGradeName').value = nm; }
+function bookLabel(id) { const b = bookById(id); return b ? (b.bookTitle || b.classId) : id; }
 
 // ---------------- 學生錄音 ----------------
 function populateFilters() {
@@ -83,7 +80,7 @@ function renderSubs() {
     (!fn || String(s.studentName).toLowerCase().includes(fn)));
   $('subCount').innerText = `共 ${rows.length} 筆`;
   $('subsTable').innerHTML = `
-    <tr><th>時間</th><th>年級·書</th><th>課次</th><th>學生</th><th>分數</th><th>狀態</th><th>操作</th></tr>
+    <tr><th>時間</th><th>書</th><th>課次</th><th>學生</th><th>分數</th><th>狀態</th><th>操作</th></tr>
     ${rows.map(s => `
       <tr>
         <td>${esc(s.timestamp)}</td>
@@ -169,7 +166,7 @@ function renderStats() {
   ].map(([l, n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
 
   $('statTable').innerHTML = `
-    <tr><th>年級·書</th><th>課次</th><th>繳交數</th><th>已評</th><th>平均分</th></tr>
+    <tr><th>書</th><th>課次</th><th>繳交數</th><th>已評</th><th>平均分</th></tr>
     ${DB.stats.map(v => `<tr>
       <td>${esc(bookLabel(v.classId))}</td><td>${esc(v.lessonId)}</td>
       <td>${v.count}</td><td>${v.graded}</td><td>${v.avg == null ? '—' : v.avg}</td></tr>`).join('') || '<tr><td colspan="5" class="hint">尚無資料</td></tr>'}`;
@@ -177,22 +174,19 @@ function renderStats() {
 
 // ---------------- 課程管理 ----------------
 function renderLessons() {
-  // 書本：依年級分組
-  const grades = {};
-  DB.classes.forEach(c => { const g = c.gradeId || c.classId; (grades[g] = grades[g] || { name: c.gradeName || c.className || g, books: [] }).books.push(c); });
-  const gkeys = Object.keys(grades).sort();
+  const books = DB.classes.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
   $('classTable').innerHTML = `
-    <tr><th>年級</th><th>書名</th><th>書本ID</th><th>顯示</th><th></th></tr>
-    ${gkeys.map(g => grades[g].books.map((c, i) => `<tr>
-      <td>${i === 0 ? '<b>' + esc(grades[g].name) + '</b>' : ''}</td>
-      <td>${esc(c.bookTitle)}</td><td>${esc(c.classId)}</td>
+    <tr><th>書名</th><th>章節數</th><th>顯示</th><th></th></tr>
+    ${books.map(c => `<tr>
+      <td><b>${esc(c.bookTitle || c.classId)}</b></td>
+      <td>${DB.lessons.filter(l => l.classId === c.classId).length}</td>
       <td>${String(c.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick='editClass(${JSON.stringify(c)})'>編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delClass('${esc(c.classId)}')">🗑</button></td>
-    </tr>`).join('')).join('')}`;
+    </tr>`).join('') || '<tr><td colspan="4" class="hint">還沒有書，按右上「＋ 新增書本」。</td></tr>'}`;
 
   $('lessonTable').innerHTML = `
-    <tr><th>年級·書</th><th>課次</th><th>標題</th><th>課文</th><th>音檔</th><th>顯示</th><th></th></tr>
+    <tr><th>書</th><th>課次</th><th>標題</th><th>課文</th><th>音檔</th><th>顯示</th><th></th></tr>
     ${DB.lessons.map(l => `<tr>
       <td>${esc(bookLabel(l.classId))}</td><td>${esc(l.lessonId)}</td><td>${esc(l.lessonLabel)}</td>
       <td>${esc(String(l.text).slice(0, 24))}…</td>
@@ -205,41 +199,30 @@ function renderLessons() {
 
 function editClass(c) {
   EDITING_EXISTING = !!(c && c.classId);
-  c = c || { classId: '', className: '', bookTitle: '', active: 'yes', order: 99, gradeId: '', gradeName: '' };
-  const gopts = gradeIds().map(g => { const nm = gradeNameByGid(g); return `<option value="${esc(g)}">${nm && nm !== g ? esc(nm) : esc(g)}</option>`; }).join('');
+  c = c || { classId: '', className: '', bookTitle: '', active: 'yes', order: 99 };
   openModal(`
     <div class="title-badge">${c.classId ? '編輯' : '新增'}書本</div>
+    <label class="fld">書名（例：Wonder）</label><input id="cBook" value="${esc(c.bookTitle)}" placeholder="Wonder">
     <div class="grid2">
-      <div><label class="fld">年級ID（例：G7）</label>
-        <input id="cGradeId" list="gradeIdList" value="${esc(c.gradeId || '')}" oninput="autoGradeName()" placeholder="G7">
-        <datalist id="gradeIdList">${gopts}</datalist></div>
-      <div><label class="fld">年級名稱（學生看到的標題）</label><input id="cGradeName" value="${esc(c.gradeName || '')}" placeholder="例：G7 錄音教室"></div>
-    </div>
-    <label class="fld">書名（例：Wonder）</label><input id="cBook" value="${esc(c.bookTitle)}">
-    <label class="fld">書本ID（每本書都要不同，例：g7-wonder，建立後勿改）</label>
-    <input id="cId" value="${esc(c.classId)}" ${c.classId ? 'readonly' : ''} placeholder="g7-wonder">
-    <div class="grid2">
-      <div><label class="fld">排序</label><input id="cOrder" type="number" value="${esc(c.order || 99)}"></div>
+      <div><label class="fld">排序（數字小的排前面，可不改）</label><input id="cOrder" type="number" value="${esc(c.order || 99)}"></div>
       <div><label class="fld">顯示給學生</label>
         <select id="cActive"><option value="yes" ${c.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${c.active === 'no' ? 'selected' : ''}>否</option></select></div>
     </div>
-    <p class="hint">💡 同一個「年級ID」底下可以放多本書（每本書用不同的書本ID）；學生首頁會依年級把書分組。</p>
+    <p class="hint">💡 建好書之後，到下方「課文 / 示範音檔」幫這本書加 Chapter。要派給哪個班級，去「📌 派作業」選。</p>
+    <input type="hidden" id="cId" value="${esc(c.classId)}">
     <div style="height:12px"></div>
     <div class="row"><button class="btn btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn btn-primary" onclick="saveClass()">儲存</button></div>`);
 }
 async function saveClass() {
-  const id = $('cId').value.trim();
-  const gradeId = ($('cGradeId').value || '').trim();
-  const gradeName = ($('cGradeName').value || '').trim();
-  if (!id) return alert('請填書本ID');
-  if (!gradeId) return alert('請填年級ID');
-  if (!EDITING_EXISTING && DB.classes.some(c => c.classId === id)) {
-    if (!confirm('⚠️ 書本ID「' + id + '」已經存在！\n\n繼續會覆蓋原本那本書（書名等會被改掉；課文不會被刪）。\n\n要新增「另一本書」請按取消，改用不同的書本ID。\n\n確定要覆蓋嗎？')) return;
-  }
+  const title = ($('cBook').value || '').trim();
+  if (!title) return alert('請填書名');
+  // 書本ID 由系統自動產生，老師不用管
+  let id = $('cId').value.trim();
+  if (!id) id = 'b' + Date.now();
   const r = await apiCall({ action: 'saveClass', password: PW, classId: id,
-    className: gradeName || gradeId, bookTitle: $('cBook').value,
-    gradeId: gradeId, gradeName: gradeName || gradeId,
+    className: title, bookTitle: title,
+    gradeId: id, gradeName: title,
     order: $('cOrder').value, active: $('cActive').value });
   if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
 }

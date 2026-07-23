@@ -46,9 +46,7 @@
         apiCall({ action: 'lessons', classId })
       ]);
       const cinfo = (cls.classes || []).find(c => c.classId === classId);
-      el('bookTitle').innerText = cinfo
-        ? ((cinfo.gradeName ? cinfo.gradeName + ' · ' : '') + (cinfo.bookTitle || cinfo.classId))
-        : classId;
+      el('bookTitle').innerText = cinfo ? (cinfo.bookTitle || cinfo.classId) : classId;
       lessons = les.lessons || [];
       if (!lessons.length) { el('lessonText').innerText = '這個班級還沒有課文，請聯絡老師。'; return; }
       select.innerHTML = lessons.map(l => `<option value="${l.lessonId}">${escAttr(l.lessonLabel || l.lessonId)}</option>`).join('');

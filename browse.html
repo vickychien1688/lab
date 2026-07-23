@@ -11,7 +11,7 @@
     <p class="brand">PAS ENGLISH LAB</p>
     <div class="card">
       <div class="title-badge">🎧 英語跟讀教室</div>
-      <p class="hint">請選擇年級與書本進入錄音教室：</p>
+      <p class="hint">請選擇書本進入錄音教室：</p>
       <div id="classList" class="class-links">
         <p class="hint" id="loading">載入中…</p>
       </div>
@@ -26,21 +26,11 @@
       try {
         const r = await apiCall({ action: 'classes' });
         if (!r.ok || !r.classes.length) { box.innerHTML = '<p class="hint">尚未建立任何書本，請先到老師後台新增。</p>'; return; }
-        const grades = {};
-        r.classes.forEach(c => {
-          const g = c.gradeId || c.classId;
-          if (!grades[g]) grades[g] = { name: c.gradeName || c.className || g, order: c.order || 0, books: [] };
-          grades[g].books.push(c);
-          grades[g].order = Math.min(grades[g].order, c.order || 0);
-        });
-        const list = Object.values(grades).sort((a, b) => (a.order || 0) - (b.order || 0));
-        box.innerHTML = list.map(g => `
-          <div class="grade-title">${esc(g.name)}</div>
-          ${g.books.slice().sort((a, b) => (a.order || 0) - (b.order || 0)).map(b => `
-            <a class="class-link" href="student.html?class=${encodeURIComponent(b.classId)}">
-              <span><b>${esc(b.bookTitle || b.classId)}</b></span>
-              <span class="go">進入 →</span>
-            </a>`).join('')}`).join('');
+        box.innerHTML = r.classes.slice().sort((a, b) => (a.order || 0) - (b.order || 0)).map(b => `
+          <a class="class-link" href="student.html?class=${encodeURIComponent(b.classId)}">
+            <span><b>${esc(b.bookTitle || b.classId)}</b></span>
+            <span class="go">進入 →</span>
+          </a>`).join('');
       } catch (e) {
         box.innerHTML = '<p class="hint">連線失敗，請確認 config.js 的 API_URL 已設定正確。</p>';
       }
