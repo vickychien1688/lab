@@ -256,7 +256,8 @@ audio { width: 100%; margin-top: 8px; }
 .hero-eyebrow { color: var(--gold); letter-spacing: 7px; font-weight: 700; font-size: 15px; margin-bottom: 18px; }
 .hero-title {
   font-family: var(--serif); font-weight: 900; color: #fff;
-  font-size: 52px; line-height: 1.22; letter-spacing: 2px; margin: 0 0 22px;
+  font-size: 42px; line-height: 1.22; letter-spacing: 2px; margin: 0 0 22px;
+  white-space: nowrap;
 }
 .hero-desc { color: rgba(255,255,255,.82); font-size: 16.5px; line-height: 2; margin: 0 0 26px; }
 .hero-bar { width: 84px; height: 4px; background: var(--gold); border-radius: 2px; }
@@ -273,7 +274,7 @@ audio { width: 100%; margin-top: 8px; }
 @media (max-width: 900px) {
   .login-split { flex-direction: column; }
   .login-hero { padding: 44px 30px 38px; flex: none; }
-  .hero-title { font-size: 34px; }
+  .hero-title { font-size: clamp(22px, 7.6vw, 30px); }
   .login-hero::before { width: 320px; height: 320px; right: -120px; bottom: -180px; }
   .login-hero::after { width: 190px; height: 190px; right: -30px; bottom: -90px; }
   .login-panel { padding: 34px 22px 60px; align-items: flex-start; }
