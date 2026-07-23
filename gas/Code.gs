@@ -58,14 +58,19 @@ function setup() {
   ]);
 
   var subs = ss.insertSheet('Submissions');
-  subs.getRange(1, 1, 1, 10).setValues([
+  subs.getRange(1, 1, 1, 13).setValues([
     ['timestamp', 'classId', 'lessonId', 'studentName', 'fileId', 'fileName',
-     'durationSec', 'score', 'comment', 'status']
+     'durationSec', 'score', 'comment', 'status', 'roomId', 'studentId', 'assignId']
   ]);
 
   var config = ss.insertSheet('Config');
   config.getRange(1, 1, 1, 2).setValues([['key', 'value']]);
   config.getRange(2, 1, 1, 2).setValues([['adminPassword', DEFAULT_ADMIN_PASSWORD]]);
+
+  // 學習平台資料表（班級/學生/作業）
+  ss.insertSheet('Rooms').getRange(1, 1, 1, 5).setValues([['roomId', 'roomName', 'code', 'active', 'order']]);
+  ss.insertSheet('Students').getRange(1, 1, 1, 6).setValues([['studentId', 'roomId', 'name', 'pin', 'active', 'order']]);
+  ss.insertSheet('Assignments').getRange(1, 1, 1, 8).setValues([['assignId', 'roomId', 'classId', 'lessonId', 'dueDate', 'active', 'order', 'note']]);
 
   // 2) Drive 資料夾
   var folder = DriveApp.createFolder('PAS English Lab Recordings');
@@ -100,8 +105,19 @@ function route(d) {
       case 'lessons':    return json({ ok: true, lessons: getLessons(d.classId, true) });
       case 'lessonAudio':return json(lessonAudio(d));
       case 'submit':     return json(saveSubmission(d));
+      // ---- 學習平台（學生端，公開）----
+      case 'roomByCode':    return json(roomByCode(d));
+      case 'studentLogin':  return json(studentLogin(d));
+      case 'myAssignments': return json(myAssignments(d));
       // ---- 以下需要密碼 ----
       case 'uploadAudio':return needAuth(d) || json(uploadAudio(d));
+      case 'saveRoom':        return needAuth(d) || json(saveRoomA(d));
+      case 'deleteRoom':      return needAuth(d) || json(deleteRowByKey('Rooms', 'roomId', d.roomId));
+      case 'saveStudent':     return needAuth(d) || json(saveStudentA(d));
+      case 'saveStudentsBulk':return needAuth(d) || json(saveStudentsBulk(d));
+      case 'deleteStudent':   return needAuth(d) || json(deleteRowByKey('Students', 'studentId', d.studentId));
+      case 'saveAssignment':  return needAuth(d) || json(saveAssignmentA(d));
+      case 'deleteAssignment':return needAuth(d) || json(deleteRowByKey('Assignments', 'assignId', d.assignId));
       case 'adminData':  return needAuth(d) || json(adminData());
       case 'getAudio':   return needAuth(d) || json(getAudio(d.fileId));
       case 'saveClass':  return needAuth(d) || json(saveClass(d));
@@ -191,6 +207,7 @@ function getLessons(classId, activeOnly) {
 // ============================================================
 function saveSubmission(d) {
   if (!d.audio) return { ok: false, error: '沒有音檔資料' };
+  ensureSubmissionColumns();
   var name = (d.studentName || 'unknown').toString().replace(/[\\/:*?"<>|]/g, '_').trim();
   var ext = (d.mime && d.mime.indexOf('webm') > -1) ? 'webm' : 'm4a';
   var stamp = Utilities.formatDate(new Date(), 'GMT+8', 'yyyyMMdd_HHmmss');
@@ -199,19 +216,123 @@ function saveSubmission(d) {
   var blob = Utilities.newBlob(bytes, d.mime || 'audio/mp4', fileName);
   var file = getFolder().createFile(blob);
 
-  var ss = getSS(), sh = ss.getSheetByName('Submissions');
-  sh.appendRow([
-    Utilities.formatDate(new Date(), 'GMT+8', 'yyyy-MM-dd HH:mm:ss'),
-    d.classId || '', d.lessonId || '', name,
-    file.getId(), fileName, Number(d.duration || 0), '', '', 'new'
-  ]);
+  var sh = getSS().getSheetByName('Submissions');
+  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  sh.appendRow(rowFromObj(head, {
+    timestamp: Utilities.formatDate(new Date(), 'GMT+8', 'yyyy-MM-dd HH:mm:ss'),
+    classId: d.classId || '', lessonId: d.lessonId || '', studentName: name,
+    fileId: file.getId(), fileName: fileName, durationSec: Number(d.duration || 0),
+    score: '', comment: '', status: 'new',
+    roomId: d.roomId || '', studentId: d.studentId || '', assignId: d.assignId || ''
+  }));
   return { ok: true, fileId: file.getId() };
+}
+function ensureSubmissionColumns() {
+  var sh = getSS().getSheetByName('Submissions');
+  var lastCol = sh.getLastColumn();
+  var head = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  ['roomId', 'studentId', 'assignId'].forEach(function (col) {
+    if (head.indexOf(col) === -1) { lastCol++; sh.getRange(1, lastCol).setValue(col); head.push(col); }
+  });
+}
+
+// ============================================================
+//  學習平台：班級(Rooms) / 學生(Students) / 作業(Assignments)
+// ============================================================
+function ensureSheet(name, headers) {
+  var ss = getSS(), sh = ss.getSheetByName(name);
+  if (!sh) { sh = ss.insertSheet(name); sh.getRange(1, 1, 1, headers.length).setValues([headers]); }
+  return sh;
+}
+function ensureLmsSheets() {
+  ensureSheet('Rooms', ['roomId', 'roomName', 'code', 'active', 'order']);
+  ensureSheet('Students', ['studentId', 'roomId', 'name', 'pin', 'active', 'order']);
+  ensureSheet('Assignments', ['assignId', 'roomId', 'classId', 'lessonId', 'dueDate', 'active', 'order', 'note']);
+}
+function newId(p) { return p + new Date().getTime() + Math.floor(Math.random() * 1000); }
+
+// ---- 學生端（公開）----
+function roomByCode(d) {
+  var code = String(d.code || '').trim().toLowerCase();
+  if (!code) return { ok: false, error: '請輸入班級代碼' };
+  ensureLmsSheets();
+  var rooms = readSheet('Rooms').filter(function (r) {
+    return r.roomId && String(r.code).trim().toLowerCase() === code && String(r.active).toLowerCase() !== 'no';
+  });
+  if (!rooms.length) return { ok: false, error: '找不到這個班級代碼' };
+  var room = rooms[0];
+  var students = readSheet('Students')
+    .filter(function (s) { return s.studentId && s.roomId === room.roomId && String(s.active).toLowerCase() !== 'no'; })
+    .sort(function (a, b) { return (a.order || 0) - (b.order || 0); })
+    .map(function (s) { return { studentId: s.studentId, name: s.name, hasPin: !!String(s.pin || '').trim() }; });
+  return { ok: true, room: { roomId: room.roomId, roomName: room.roomName }, students: students };
+}
+function studentLogin(d) {
+  var s = readSheet('Students').filter(function (x) { return x.studentId === d.studentId; })[0];
+  if (!s) return { ok: false, error: '找不到學生' };
+  var pin = String(s.pin || '').trim();
+  if (pin && String(d.pin || '').trim() !== pin) return { ok: false, error: 'PIN 碼錯誤' };
+  var room = readSheet('Rooms').filter(function (r) { return r.roomId === s.roomId; })[0];
+  return { ok: true, student: { studentId: s.studentId, name: s.name, roomId: s.roomId }, room: room ? { roomId: room.roomId, roomName: room.roomName } : null };
+}
+function myAssignments(d) {
+  if (!d.roomId) return { ok: false, error: 'no room' };
+  ensureLmsSheets();
+  var books = getClasses(false), lessons = getLessons(null, false);
+  var assigns = readSheet('Assignments')
+    .filter(function (a) { return a.assignId && a.roomId === d.roomId && String(a.active).toLowerCase() !== 'no'; })
+    .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+  var subs = readSheet('Submissions').filter(function (s) { return s.fileId && d.studentId && s.studentId === d.studentId; });
+  var out = assigns.map(function (a) {
+    var book = books.filter(function (b) { return b.classId === a.classId; })[0] || {};
+    var lesson = lessons.filter(function (l) { return l.classId === a.classId && l.lessonId === a.lessonId; })[0] || {};
+    var mine = subs.filter(function (s) { return (a.assignId && s.assignId === a.assignId) || (s.classId === a.classId && s.lessonId === a.lessonId); })
+      .sort(function (x, y) { return String(y.timestamp).localeCompare(String(x.timestamp)); });
+    var last = mine[0];
+    return {
+      assignId: a.assignId, classId: a.classId, lessonId: a.lessonId,
+      bookTitle: book.bookTitle || a.classId, gradeName: book.gradeName || '', lessonLabel: lesson.lessonLabel || a.lessonId,
+      dueDate: a.dueDate || '', note: a.note || '',
+      done: !!last, status: last ? last.status : '', score: last ? last.score : '',
+      comment: last ? last.comment : '', submittedAt: last ? last.timestamp : ''
+    };
+  });
+  return { ok: true, assignments: out };
+}
+
+// ---- 老師端 ----
+function saveRoomA(d) {
+  ensureLmsSheets();
+  var id = d.roomId || newId('r');
+  return upsert('Rooms', 'roomId', id, { roomId: id, roomName: d.roomName || id, code: String(d.code || '').trim(), active: d.active || 'yes', order: d.order || 99 });
+}
+function saveStudentA(d) {
+  ensureLmsSheets();
+  var id = d.studentId || newId('s');
+  return upsert('Students', 'studentId', id, { studentId: id, roomId: d.roomId || '', name: d.name || '', pin: String(d.pin || '').trim(), active: d.active || 'yes', order: d.order || 99 });
+}
+function saveStudentsBulk(d) {
+  ensureLmsSheets();
+  var names = d.names || [], created = 0;
+  names.forEach(function (nm) {
+    nm = String(nm).trim(); if (!nm) return;
+    var id = newId('s') + '_' + created;
+    upsert('Students', 'studentId', id, { studentId: id, roomId: d.roomId || '', name: nm, pin: '', active: 'yes', order: created + 1 });
+    created++;
+  });
+  return { ok: true, created: created };
+}
+function saveAssignmentA(d) {
+  ensureLmsSheets();
+  var id = d.assignId || newId('a');
+  return upsert('Assignments', 'assignId', id, { assignId: id, roomId: d.roomId || '', classId: d.classId || '', lessonId: d.lessonId || '', dueDate: d.dueDate || '', active: d.active || 'yes', order: d.order || 99, note: d.note || '' });
 }
 
 // ============================================================
 //  後台
 // ============================================================
 function adminData() {
+  ensureLmsSheets();
   var classes = getClasses(false);
   var lessons = getLessons(null, false);
   var subs = readSheet('Submissions').map(function (s, i) { s._row = i + 2; return s; })
@@ -234,7 +355,10 @@ function adminData() {
     return v;
   });
 
-  return { ok: true, classes: classes, lessons: lessons, submissions: subs, stats: statList };
+  return {
+    ok: true, classes: classes, lessons: lessons, submissions: subs, stats: statList,
+    rooms: readSheet('Rooms'), students: readSheet('Students'), assignments: readSheet('Assignments')
+  };
 }
 
 function getAudio(fileId) {

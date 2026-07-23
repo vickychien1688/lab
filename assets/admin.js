@@ -1,6 +1,6 @@
 /* 老師後台邏輯 */
 let PW = sessionStorage.getItem('pas_pw') || '';
-let DB = { classes: [], lessons: [], submissions: [], stats: [] };
+let DB = { classes: [], lessons: [], submissions: [], stats: [], rooms: [], students: [], assignments: [] };
 let EDIT_MARKS = []; // 課文編輯中的分句點（秒）
 let EDITING_EXISTING = false; // 目前彈窗是「編輯既有」還是「新增」
 
@@ -39,7 +39,7 @@ async function refreshAll() {
   const r = await apiCall({ action: 'adminData', password: PW });
   if (r.ok) { DB = r; renderAll(); }
 }
-function renderAll() { renderSubs(); renderStudents(); renderStats(); renderLessons(); populateFilters(); }
+function renderAll() { renderSubs(); renderStudents(); renderStats(); renderLessons(); populateFilters(); renderRooms(); fillRoomSelects(); renderRoster(); renderAssignments(); }
 
 function showTab(t) {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === t));
@@ -386,6 +386,163 @@ async function changePassword() {
   const r = await apiCall({ action: 'setPassword', password: PW, newPassword: a });
   if (r.ok) { PW = a; sessionStorage.setItem('pas_pw', a); $('pwMsg').innerText = '✅ 已更新'; $('np1').value = $('np2').value = ''; }
   else $('pwMsg').innerText = '更新失敗';
+}
+
+// ---------------- 班級 / 學生名單 / 派作業 ----------------
+function roomById(id) { return DB.rooms.find(r => r.roomId === id); }
+function roomName(id) { const r = roomById(id); return r ? (r.roomName || r.roomId) : id; }
+function lessonLabelOf(classId, lessonId) { const l = DB.lessons.find(x => x.classId === classId && x.lessonId === lessonId); return l ? (l.lessonLabel || lessonId) : lessonId; }
+
+function fillRoomSelects() {
+  const opts = DB.rooms.map(r => `<option value="${esc(r.roomId)}">${esc(r.roomName)}（${esc(r.code)}）</option>`).join('');
+  ['rRoom', 'aRoom'].forEach(id => { const el = $(id); if (el) { const cur = el.value; el.innerHTML = opts || '<option value="">（尚無班級，先到「班級」分頁新增）</option>'; if (cur) el.value = cur; } });
+}
+function renderRooms() {
+  const t = $('roomTable'); if (!t) return;
+  t.innerHTML = `
+    <tr><th>班級名稱</th><th>班級代碼</th><th>學生數</th><th>顯示</th><th></th></tr>
+    ${DB.rooms.map(r => `<tr>
+      <td><b>${esc(r.roomName)}</b></td>
+      <td><span class="pill reviewed">${esc(r.code)}</span></td>
+      <td>${DB.students.filter(s => s.roomId === r.roomId).length}</td>
+      <td>${String(r.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='editRoom(${JSON.stringify(r)})'>編輯</button>
+          <button class="btn btn-danger btn-sm" onclick="delRoom('${esc(r.roomId)}')">🗑</button></td>
+    </tr>`).join('') || '<tr><td colspan="5" class="hint">還沒有班級，按右上「＋ 新增班級」。</td></tr>'}`;
+}
+function editRoom(r) {
+  r = r || { roomId: '', roomName: '', code: '', active: 'yes' };
+  openModal(`
+    <div class="title-badge">${r.roomId ? '編輯' : '新增'}班級</div>
+    <label class="fld">班級名稱</label><input id="kName" value="${esc(r.roomName)}" placeholder="例：週三晚班">
+    <label class="fld">班級代碼（發給學生登入用，英數字，例 abc123）</label>
+    <input id="kCode" value="${esc(r.code)}" placeholder="abc123">
+    <label class="fld">顯示</label>
+    <select id="kActive"><option value="yes" ${r.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${r.active === 'no' ? 'selected' : ''}>否</option></select>
+    <input type="hidden" id="kId" value="${esc(r.roomId)}">
+    <div style="height:12px"></div>
+    <div class="row"><button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveRoom()">儲存</button></div>`);
+}
+async function saveRoom() {
+  const code = ($('kCode').value || '').trim(), name = ($('kName').value || '').trim();
+  if (!name) return alert('請填班級名稱');
+  if (!code) return alert('請填班級代碼');
+  if (DB.rooms.some(r => r.roomId !== $('kId').value && String(r.code).trim().toLowerCase() === code.toLowerCase()))
+    return alert('這個班級代碼已被其他班級使用，請換一個');
+  const r = await apiCall({ action: 'saveRoom', password: PW, roomId: $('kId').value, roomName: name, code, active: $('kActive').value });
+  if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
+}
+async function delRoom(id) {
+  if (!confirm('刪除這個班級？（學生名單與已派作業會留著）')) return;
+  const r = await apiCall({ action: 'deleteRoom', password: PW, roomId: id });
+  if (r.ok) await refreshAll(); else alert('刪除失敗');
+}
+
+function renderRoster() {
+  const t = $('rosterTable'); if (!t) return;
+  const roomId = $('rRoom') ? $('rRoom').value : '';
+  const list = DB.students.filter(s => s.roomId === roomId).sort((a, b) => (a.order || 0) - (b.order || 0));
+  t.innerHTML = `
+    <tr><th>學生姓名</th><th>PIN（可空）</th><th>顯示</th><th></th></tr>
+    ${list.map(s => `<tr>
+      <td><b>${esc(s.name)}</b></td><td>${esc(s.pin) || '—'}</td>
+      <td>${String(s.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='editStudent(${JSON.stringify(s)})'>編輯</button>
+          <button class="btn btn-danger btn-sm" onclick="delStudent('${esc(s.studentId)}')">🗑</button></td>
+    </tr>`).join('') || `<tr><td colspan="4" class="hint">${DB.rooms.length ? '這個班還沒有學生，按「＋ 新增學生」或「批次貼上名單」。' : '請先到「班級」分頁新增班級。'}</td></tr>`}`;
+}
+function editStudent(s) {
+  const roomId = (s && s.roomId) || ($('rRoom') ? $('rRoom').value : '');
+  s = s || { studentId: '', roomId: roomId, name: '', pin: '', active: 'yes' };
+  const ropts = DB.rooms.map(r => `<option value="${esc(r.roomId)}" ${r.roomId === s.roomId ? 'selected' : ''}>${esc(r.roomName)}</option>`).join('');
+  openModal(`
+    <div class="title-badge">${s.studentId ? '編輯' : '新增'}學生</div>
+    <label class="fld">班級</label><select id="sRoom">${ropts}</select>
+    <label class="fld">學生姓名</label><input id="sName" value="${esc(s.name)}">
+    <label class="fld">PIN 碼（4 位數，可留空＝不用 PIN）</label><input id="sPin" value="${esc(s.pin)}" maxlength="6">
+    <input type="hidden" id="sId" value="${esc(s.studentId)}">
+    <div style="height:12px"></div>
+    <div class="row"><button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveStudent()">儲存</button></div>`);
+}
+async function saveStudent() {
+  const name = ($('sName').value || '').trim();
+  if (!name) return alert('請填學生姓名');
+  const r = await apiCall({ action: 'saveStudent', password: PW, studentId: $('sId').value, roomId: $('sRoom').value, name, pin: ($('sPin').value || '').trim() });
+  if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
+}
+async function delStudent(id) {
+  if (!confirm('刪除這個學生？')) return;
+  const r = await apiCall({ action: 'deleteStudent', password: PW, studentId: id });
+  if (r.ok) await refreshAll(); else alert('刪除失敗');
+}
+function bulkStudents() {
+  const roomId = $('rRoom') ? $('rRoom').value : '';
+  if (!roomId) return alert('請先在上面選一個班級');
+  openModal(`
+    <div class="title-badge">批次新增學生到「${esc(roomName(roomId))}」</div>
+    <p class="hint">一行一個名字，貼上後按新增。</p>
+    <textarea id="bNames" style="min-height:180px" placeholder="小明&#10;小華&#10;小美"></textarea>
+    <div style="height:12px"></div>
+    <div class="row"><button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveBulk('${esc(roomId)}')">新增</button></div>`);
+}
+async function saveBulk(roomId) {
+  const names = ($('bNames').value || '').split('\n').map(x => x.trim()).filter(Boolean);
+  if (!names.length) return alert('請至少輸入一個名字');
+  const r = await apiCall({ action: 'saveStudentsBulk', password: PW, roomId, names });
+  if (r.ok) { closeModal(); await refreshAll(); alert('已新增 ' + r.created + ' 位學生'); } else alert('新增失敗');
+}
+
+function renderAssignments() {
+  const t = $('assignTable'); if (!t) return;
+  const roomId = $('aRoom') ? $('aRoom').value : '';
+  const list = DB.assignments.filter(a => a.roomId === roomId).sort((a, b) => (a.order || 0) - (b.order || 0));
+  t.innerHTML = `
+    <tr><th>指派內容（書 · 課次）</th><th>截止日</th><th>顯示</th><th></th></tr>
+    ${list.map(a => `<tr>
+      <td><b>${esc(bookLabel(a.classId))}</b> · ${esc(lessonLabelOf(a.classId, a.lessonId))}</td>
+      <td>${esc(a.dueDate) || '—'}</td>
+      <td>${String(a.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='editAssignment(${JSON.stringify(a)})'>編輯</button>
+          <button class="btn btn-danger btn-sm" onclick="delAssignment('${esc(a.assignId)}')">🗑</button></td>
+    </tr>`).join('') || `<tr><td colspan="4" class="hint">${DB.rooms.length ? '這個班還沒派作業，按「＋ 指派作業」。' : '請先到「班級」分頁新增班級。'}</td></tr>`}`;
+}
+function editAssignment(a) {
+  const roomId = (a && a.roomId) || ($('aRoom') ? $('aRoom').value : '');
+  a = a || { assignId: '', roomId: roomId, classId: '', lessonId: '', dueDate: '', active: 'yes', note: '' };
+  const ropts = DB.rooms.map(r => `<option value="${esc(r.roomId)}" ${r.roomId === a.roomId ? 'selected' : ''}>${esc(r.roomName)}</option>`).join('');
+  const bopts = DB.classes.map(c => `<option value="${esc(c.classId)}" ${c.classId === a.classId ? 'selected' : ''}>${esc(bookLabel(c.classId))}</option>`).join('');
+  openModal(`
+    <div class="title-badge">${a.assignId ? '編輯' : '指派'}作業</div>
+    <label class="fld">指派給哪個班級</label><select id="gRoom">${ropts}</select>
+    <label class="fld">選書本</label><select id="gBook" onchange="fillAssignLessons()">${bopts}</select>
+    <label class="fld">選課次</label><select id="gLesson"></select>
+    <label class="fld">截止日（可空）</label><input id="gDue" type="date" value="${esc(a.dueDate)}">
+    <input type="hidden" id="gId" value="${esc(a.assignId)}">
+    <input type="hidden" id="gLessonCur" value="${esc(a.lessonId)}">
+    <div style="height:12px"></div>
+    <div class="row"><button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveAssignment()">儲存</button></div>`);
+  fillAssignLessons();
+}
+function fillAssignLessons() {
+  const classId = $('gBook') ? $('gBook').value : '';
+  const cur = $('gLessonCur') ? $('gLessonCur').value : '';
+  const ls = DB.lessons.filter(l => l.classId === classId).sort((a, b) => (a.order || 0) - (b.order || 0));
+  $('gLesson').innerHTML = ls.map(l => `<option value="${esc(l.lessonId)}" ${l.lessonId === cur ? 'selected' : ''}>${esc(l.lessonLabel || l.lessonId)}</option>`).join('') || '<option value="">（這本書還沒有課文）</option>';
+}
+async function saveAssignment() {
+  const roomId = $('gRoom').value, classId = $('gBook').value, lessonId = $('gLesson').value;
+  if (!roomId || !classId || !lessonId) return alert('請選班級、書本、課次');
+  const r = await apiCall({ action: 'saveAssignment', password: PW, assignId: $('gId').value, roomId, classId, lessonId, dueDate: $('gDue').value });
+  if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
+}
+async function delAssignment(id) {
+  if (!confirm('取消這個作業指派？（不會刪學生已交的錄音）')) return;
+  const r = await apiCall({ action: 'deleteAssignment', password: PW, assignId: id });
+  if (r.ok) await refreshAll(); else alert('刪除失敗');
 }
 
 // ---------------- Modal ----------------

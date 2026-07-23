@@ -31,15 +31,45 @@
     </div>
 
     <div class="tabs">
-      <div class="tab active" data-tab="subs" onclick="showTab('subs')">🎧 學生錄音</div>
-      <div class="tab" data-tab="students" onclick="showTab('students')">👤 學生繳交</div>
+      <div class="tab active" data-tab="rooms" onclick="showTab('rooms')">🏫 班級</div>
+      <div class="tab" data-tab="roster" onclick="showTab('roster')">👥 學生名單</div>
+      <div class="tab" data-tab="assign" onclick="showTab('assign')">📌 派作業</div>
+      <div class="tab" data-tab="subs" onclick="showTab('subs')">🎧 學生錄音</div>
+      <div class="tab" data-tab="students" onclick="showTab('students')">👤 繳交彙整</div>
       <div class="tab" data-tab="stats" onclick="showTab('stats')">📊 統計</div>
-      <div class="tab" data-tab="lessons" onclick="showTab('lessons')">📚 課程管理</div>
+      <div class="tab" data-tab="lessons" onclick="showTab('lessons')">📚 資源庫</div>
       <div class="tab" data-tab="settings" onclick="showTab('settings')">⚙️ 設定</div>
     </div>
 
+    <!-- 班級（學生分組）-->
+    <div class="card tabpane" id="pane-rooms">
+      <div class="toolbar"><b>班級（學生分組）</b><span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" onclick="editRoom()">＋ 新增班級</button></div>
+      <p class="hint">每個班級有一組「班級代碼」，把代碼發給學生，他們就能登入進到這個班。</p>
+      <div style="overflow-x:auto"><table id="roomTable"></table></div>
+    </div>
+    <!-- 學生名單 -->
+    <div class="card tabpane hidden" id="pane-roster">
+      <div class="toolbar">
+        <select id="rRoom" onchange="renderRoster()" style="max-width:220px"></select>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost btn-sm" onclick="bulkStudents()">＋ 批次貼上名單</button>
+        <button class="btn btn-primary btn-sm" onclick="editStudent()">＋ 新增學生</button>
+      </div>
+      <div style="overflow-x:auto"><table id="rosterTable"></table></div>
+    </div>
+    <!-- 派作業 -->
+    <div class="card tabpane hidden" id="pane-assign">
+      <div class="toolbar">
+        <select id="aRoom" onchange="renderAssignments()" style="max-width:220px"></select>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" onclick="editAssignment()">＋ 指派作業</button>
+      </div>
+      <div style="overflow-x:auto"><table id="assignTable"></table></div>
+    </div>
+
     <!-- 學生錄音 -->
-    <div class="card tabpane" id="pane-subs">
+    <div class="card tabpane hidden" id="pane-subs">
       <div class="toolbar">
         <select id="fClass" onchange="renderSubs()" style="max-width:200px"><option value="">全部書本</option></select>
         <select id="fLesson" onchange="renderSubs()" style="max-width:180px"><option value="">全部課次</option></select>
