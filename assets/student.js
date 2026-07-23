@@ -29,7 +29,7 @@
       : '🤖 <b>Android</b>：點右上角選單「⋮」，選「<b>用其他瀏覽器開啟</b>」';
     const b = el('inappWarn');
     b.innerHTML = '⚠️ <b>你正在用 LINE 開啟，通常無法錄音！</b><br>請改用手機瀏覽器（Safari／Chrome）：<br>' + steps +
-      '<br>或按 <button id="copyUrlBtn" class="btn" style="background:#f6ad55;color:#3a2a12;padding:6px 12px;font-size:13px;margin-top:8px">📋 複製網址</button> 再貼到瀏覽器網址列打開。';
+      '<br>或按 <button id="copyUrlBtn" class="btn" style="background:#c19a3d;color:#fff;padding:6px 12px;font-size:13px;margin-top:8px">📋 複製網址</button> 再貼到瀏覽器網址列打開。';
     b.classList.remove('hidden');
     const c = el('copyUrlBtn');
     if (c) c.onclick = async () => {
@@ -239,9 +239,9 @@
         for (let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i] - 128));
         const on = peak > 6;
         el('micHint').innerText = on ? '✅ 有收到你的聲音！' : '🎤 對著麥克風說話看看…';
-        el('micHint').style.color = on ? '#34d399' : '#8b96a8';
-        ctx.fillStyle = '#111'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.lineWidth = 2; ctx.strokeStyle = on ? '#34d399' : '#4a5568'; ctx.beginPath();
+        el('micHint').style.color = on ? '#1e7f4f' : '#7a8494';
+        ctx.fillStyle = '#0e2038'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 2; ctx.strokeStyle = on ? '#dcbb6a' : '#4a5f7a'; ctx.beginPath();
         let x = 0; const slice = canvas.width / data.length;
         for (let i = 0; i < data.length; i++) {
           const v = data[i] / 128.0, y = v * canvas.height / 2;
@@ -255,7 +255,7 @@
       el('micHint').innerText = inApp()
         ? '❌ LINE 內建瀏覽器無法錄音，請改用 Safari／Chrome 開啟（見上方橘色提示）'
         : '❌ 拿不到麥克風，請按瀏覽器的「允許」麥克風';
-      el('micHint').style.color = '#f87171';
+      el('micHint').style.color = '#c0392b';
     }
   };
   function stopMicTest() {
@@ -263,7 +263,7 @@
     if (testStream) { testStream.getTracks().forEach(t => t.stop()); testStream = null; }
     if (testCtx) { try { testCtx.close(); } catch (e) {} testCtx = null; }
     const b = el('testMicBtn'); if (b) b.innerText = '🎤 測試麥克風';
-    const h = el('micHint'); if (h) { h.innerText = '按這裡先確認麥克風有收到你的聲音'; h.style.color = '#8b96a8'; }
+    const h = el('micHint'); if (h) { h.innerText = '按這裡先確認麥克風有收到你的聲音'; h.style.color = '#7a8494'; }
   }
 
   // ---- 工具 ----
@@ -273,8 +273,8 @@
       animationId = requestAnimationFrame(draw);
       const data = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteTimeDomainData(data);
-      ctx.fillStyle = '#111'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.lineWidth = 2; ctx.strokeStyle = '#34d399'; ctx.beginPath();
+      ctx.fillStyle = '#0e2038'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.lineWidth = 2; ctx.strokeStyle = '#dcbb6a'; ctx.beginPath();
       let x = 0; const slice = canvas.width / data.length;
       for (let i = 0; i < data.length; i++) {
         const v = data[i] / 128.0, y = v * canvas.height / 2;

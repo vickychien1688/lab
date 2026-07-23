@@ -18,7 +18,7 @@ window.PAS_CONFIG = {
       bar = document.createElement('div');
       bar.textContent = '⏳ 處理中，請稍候…';
       bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;text-align:center;' +
-        'padding:7px;font-size:14px;font-weight:700;color:#04120a;background:#00ff88;' +
+        'padding:7px;font-size:14px;font-weight:700;color:#fff;background:#0e2038;' +
         'font-family:inherit;display:none;box-shadow:0 2px 10px rgba(0,0,0,.4)';
       (document.body || document.documentElement).appendChild(bar);
     }
