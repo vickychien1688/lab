@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>老師使用手冊 · PAS English Lab</title>
+  <title>使用手冊 · PAS English Lab</title>
   <style>
     :root { --primary:#00c46a; --bg:#0f1216; --card:#1b1f27; --card2:#242a34; --text:#e6ebf2; --muted:#98a2b3; --line:#333b47; --warn:#f6ad55; }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--text);
-      font-family:"Segoe UI",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
-      line-height:1.75; }
+      font-family:"Segoe UI",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif; line-height:1.75; }
     .wrap { max-width:820px; margin:0 auto; padding:32px 20px 80px; }
     header.top { text-align:center; margin-bottom:8px; }
     .brand { letter-spacing:3px; color:var(--muted); font-size:12px; }
@@ -32,8 +31,7 @@
     ol, ul { padding-left:22px; margin:8px 0; }
     li { margin:5px 0; }
     .kbd { background:var(--card2); border:1px solid var(--line); border-radius:6px; padding:1px 8px; font-weight:700; white-space:nowrap; }
-    .tag { display:inline-block; background:var(--card2); border:1px solid var(--line); border-radius:20px;
-      padding:2px 10px; font-size:13px; margin:2px 2px; }
+    .tag { display:inline-block; background:var(--card2); border:1px solid var(--line); border-radius:20px; padding:2px 10px; font-size:13px; margin:2px 2px; }
     .callout { border-left:4px solid var(--primary); background:rgba(0,196,106,.08); padding:12px 16px; border-radius:8px; margin:12px 0; }
     .callout.warn { border-left-color:var(--warn); background:rgba(246,173,85,.10); }
     .muted { color:var(--muted); }
@@ -41,17 +39,16 @@
     th,td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
     th { color:var(--muted); font-weight:700; }
     .step { background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:8px 0; }
+    .flow { background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:15px; line-height:2; }
     footer { text-align:center; color:var(--muted); font-size:13px; margin-top:30px; }
     a { color:var(--primary); }
     @media print {
       body { background:#fff; color:#111; }
       .wrap { max-width:100%; padding:0; }
       .toolbar { display:none; }
-      section, .linkrow, .step, .callout { border-color:#ccc; background:#fff !important; -webkit-print-color-adjust:exact; break-inside:avoid; }
+      section, .linkrow, .step, .callout, .flow { border-color:#ccc; background:#fff !important; -webkit-print-color-adjust:exact; break-inside:avoid; }
       section h2 .n { background:#111; color:#fff; }
-      h2, h3 { color:#111; }
-      a { color:#111; }
-      .callout { border-left-color:#111; }
+      h2, h3 { color:#111; } a { color:#111; } .callout { border-left-color:#111; }
     }
   </style>
 </head>
@@ -59,150 +56,147 @@
 <div class="wrap">
   <header class="top">
     <div class="brand">PAS ENGLISH LAB</div>
-    <h1>老師使用手冊</h1>
-    <p class="sub">英語跟讀（Shadowing）錄音系統 · 給老師的操作指南</p>
+    <h1>使用手冊</h1>
+    <p class="sub">英語跟讀（Shadowing）線上學習平台 · 老師操作指南</p>
   </header>
 
   <div class="toolbar">
     <button class="btn" onclick="window.print()">🖨 列印 / 存成 PDF</button>
     <a class="btn ghost" href="admin.html">前往老師後台 →</a>
-    <a class="btn ghost" href="index.html">前往學生首頁 →</a>
+    <a class="btn ghost" href="index.html">學生登入頁 →</a>
   </div>
 
   <div class="links">
-    <div class="linkrow"><b>👩‍🎓 學生用（發給學生）</b><a href="https://read.our-reading-space.com/">https://read.our-reading-space.com/</a></div>
+    <div class="linkrow"><b>👩‍🎓 學生登入（發給學生）</b><a href="https://read.our-reading-space.com/">https://read.our-reading-space.com/</a><br><small>學生用「班級代碼＋自己的名字」登入。</small></div>
     <div class="linkrow"><b>👩‍🏫 老師後台</b><a href="https://read.our-reading-space.com/admin.html">https://read.our-reading-space.com/admin.html</a><br><small>預設密碼 1234，第一次進去請立刻改。</small></div>
   </div>
 
   <section>
-    <h2><span class="n">1</span>這個系統在做什麼</h2>
-    <p>學生打開網頁，一邊聽老師的示範音檔、一邊朗讀，系統會把「老師示範＋學生的聲音」<b>混音錄下來</b>並上傳給你。你在後台可以聽每個學生的錄音、打分數、看誰交了、管理課文與音檔。</p>
-    <p class="muted">全部免費、免安裝：學生用手機或電腦瀏覽器就能用；你用有網路的裝置登入後台即可。</p>
+    <h2><span class="n">1</span>這個平台怎麼運作</h2>
+    <p>系統分三塊，用「派作業」把內容和學生連起來：</p>
+    <ul>
+      <li><b>📚 資源庫</b>：所有書與課文（例《The Elephant Man》Ch1–4），是你的教材倉庫。</li>
+      <li><b>🏫 班級 + 👥 學生</b>：一個班級是一群學生，每班有一組<b>班級代碼</b>給學生登入。</li>
+      <li><b>📌 派作業</b>：從資源庫挑一課，指派給某個班級。</li>
+    </ul>
+    <div class="flow">
+      老師：整理資源庫 → 建班級（拿代碼）→ 建學生名單 → <b>派作業</b><br>
+      學生：用代碼登入 → 看到自己班的作業 → 錄音上傳<br>
+      老師：聽錄音 → 打分數＋評語 → <b>學生登入就看到自己的分數與評語</b>
+    </div>
+    <p class="muted">全部免費、免安裝：學生用手機/電腦瀏覽器就能用。</p>
   </section>
 
   <section>
-    <h2><span class="n">2</span>學生怎麼用（可印給學生看）</h2>
+    <h2><span class="n">2</span>👩‍🎓 給學生用（可印給學生或貼在群組）</h2>
     <ol>
-      <li>打開學生網址，選自己的<b>班級</b>。</li>
-      <li>上方選<b>課次</b>，輸入<b>自己的名字</b>。</li>
-      <li>按 <span class="kbd">🔴 START</span> → 聽到老師示範就跟著唸；一般模式會連續播放，逐句模式會「播一句→留空白換你唸→下一句」。</li>
-      <li>結束按 <span class="kbd">⏹ STOP</span>，可先試聽。</li>
-      <li>沒問題按 <span class="kbd">📤 SEND TO TEACHER</span> 送出，看到「✅ 已送出」就完成。</li>
+      <li>用手機 <b>Safari 或 Chrome</b> 打開：<b>read.our-reading-space.com</b></li>
+      <li>輸入老師給的 <b>班級代碼</b> → 按「進入」。</li>
+      <li><b>點選自己的名字</b>（如果老師有設 PIN，再輸入 4 位數 PIN）。</li>
+      <li>看到「📋 我的作業」，點要錄的作業旁的 <b>🎤 去錄音</b>。</li>
+      <li>按 <span class="kbd">🔴 START</span> 跟著唸 → <span class="kbd">⏹ STOP</span> → <span class="kbd">📤 SEND</span> 送出。</li>
+      <li>老師改完後，回「我的作業」就能看到自己的<b>分數和評語</b>。</li>
     </ol>
-    <div class="callout">第一次會跳出「要求使用麥克風」，請按<b>允許</b>，否則錄不到聲音。建議用耳機，混音效果最好。</div>
+    <div class="callout warn">🔴 <b>一定要用 Safari／Chrome 開，不要直接在 LINE 裡開</b>（LINE 內建瀏覽器不能錄音）。第一次錄音會問麥克風權限，請按「允許」。</div>
   </section>
 
   <section>
-    <h2><span class="n">3</span>老師登入後台</h2>
+    <h2><span class="n">3</span>老師：登入後台</h2>
     <ol>
-      <li>打開老師後台網址。</li>
-      <li>輸入密碼（預設 <span class="kbd">1234</span>）按登入。</li>
-      <li>進去後有五個分頁：<span class="tag">🎧 學生錄音</span><span class="tag">👤 學生繳交</span><span class="tag">📊 統計</span><span class="tag">📚 課程管理</span><span class="tag">⚙️ 設定</span></li>
+      <li>開老師後台網址，輸入密碼（預設 <span class="kbd">1234</span>）。</li>
+      <li>上方分頁：<span class="tag">🏫 班級</span><span class="tag">👥 學生名單</span><span class="tag">📌 派作業</span><span class="tag">🎧 學生錄音</span><span class="tag">👤 繳交彙整</span><span class="tag">📊 統計</span><span class="tag">📚 資源庫</span><span class="tag">⚙️ 設定</span></li>
     </ol>
-    <div class="callout warn">第一次登入請到 <b>⚙️ 設定</b> 把密碼從 1234 改掉。</div>
+    <div class="callout warn">第一次登入請到 <b>⚙️ 設定</b> 把密碼從 1234 改掉。（兩位老師共用同一組密碼）</div>
   </section>
 
   <section>
-    <h2><span class="n">4</span>管理課程（📚 課程管理）</h2>
-    <div class="callout">結構是三層：<b>年級 → 書 → 課次（文章）</b>。同一個年級底下可以放<b>多本書</b>，每本書底下有多個課次。學生首頁會依年級把書分組。</div>
-    <h3>新增書本（一本書＝一個入口）</h3>
+    <h2><span class="n">4</span>老師：建班級 &amp; 學生名單</h2>
+    <h3>🏫 班級</h3>
+    <ol>
+      <li>按 <b>＋ 新增班級</b>，填<b>班級名稱</b>（例：週三晚班）和一組<b>班級代碼</b>（英數字，例 abc123）。</li>
+      <li>把這個<b>班級代碼</b>發給該班學生，他們就能登入。</li>
+    </ol>
+    <h3>👥 學生名單</h3>
+    <ol>
+      <li>在上方選一個班級。</li>
+      <li>按 <b>＋ 新增學生</b> 一個個加；或按 <b>＋ 批次貼上名單</b>，一行一個名字一次貼上。</li>
+      <li>需要的話可幫學生設 <b>PIN 碼</b>（避免同學互點名字）；留空就不用 PIN。</li>
+    </ol>
+    <div class="callout">分數是綁在「學生」身上的，所以要先把學生建進名單，之後才對得起來、學生也才看得到自己的成績。</div>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span>老師：整理資源庫（📚 書＋課文）</h2>
+    <div class="callout">資源庫結構：<b>年級 → 書 → 課次（文章）</b>。同一年級可放多本書，每本書有多個課次。</div>
+    <h3>新增書本</h3>
     <ol>
       <li>在「年級 / 書本」按 <b>＋ 新增書本</b>。</li>
-      <li>填<b>年級ID</b>（例 G7；同一年級的書都填一樣的，系統就會歸在一起）與<b>年級名稱</b>（學生看到的標題，例「G7 錄音教室」）。</li>
-      <li>填<b>書名</b>（例 Wonder）與<b>書本ID</b>（每本書都要不同，例 g7-wonder，建立後別改）。</li>
-      <li>按儲存。要在同年級加第二本書，就再新增一本、年級ID填一樣、書本ID用不同的。</li>
+      <li>填<b>年級ID</b>（同年級都填一樣，例 G7）＋<b>年級名稱</b>、<b>書名</b>、<b>書本ID</b>（每本不同，例 g7-wonder）。</li>
     </ol>
-    <h3>新增 / 編輯課文（課次）</h3>
+    <h3>新增課文（課次）+ 示範音檔</h3>
     <ol>
-      <li>在「課文 / 示範音檔」按 <b>＋ 新增課文</b>（或既有課文按<b>編輯</b>）。</li>
-      <li>選<b>書本</b>、填<b>課次ID</b>（例 ch1）、<b>顯示標題</b>、貼上<b>課文</b>。</li>
-      <li>設定<b>示範音檔</b>（見下一段）。</li>
-      <li><b>顯示給學生</b>選「是」，按儲存。</li>
+      <li>在「課文 / 示範音檔」按 <b>＋ 新增課文</b>，選書本、填課次ID、標題、貼課文。</li>
+      <li>示範音檔：<b>直接「選擇檔案」上傳</b>電腦裡的 mp3／m4a（推薦），或貼網址。</li>
+      <li>按儲存。</li>
     </ol>
-    <div class="callout warn">⚠️ 新增時如果<b>ID 用到已存在的</b>（年級/書本ID 或課次ID），會跳出確認提醒你「這會覆蓋原本的」。要新增請一定用<b>不同的 ID</b>，才不會蓋掉舊資料。</div>
-    <h3>示範音檔：兩種方式（擇一）</h3>
-    <div class="step"><b>方式 A（推薦）· 直接上傳</b><br>在「示範音檔」按 <b>選擇檔案</b>，挑你電腦硬碟裡的 mp3／m4a，看到「✅ 已上傳」後，記得按最下面<b>儲存</b>才生效。</div>
-    <div class="step"><b>方式 B · 貼網址</b><br>如果音檔已經有網路連結，也可以直接貼在下面的網址欄。</div>
-    <div class="callout">改課文、換音檔都在這裡完成，<b>不需要改任何程式碼</b>。</div>
+    <div class="callout warn">⚠️ 新增時 ID（年級/書本/課次）若用到<b>已存在的</b>會跳確認，因為那會「覆蓋」舊的。要新增請用<b>不同的 ID</b>。</div>
   </section>
 
   <section>
-    <h2><span class="n">5</span>⭐ 讓學生「一句一句跟讀」的兩種做法</h2>
-    <p>想讓學生播一句 → 留空白跟著唸錄音 → 下一句，<b>看你的音檔是哪一種</b>，選一種做法就好：</p>
-
-    <h3>方法一（最省事）· 音檔本身已經剪好停頓</h3>
-    <p>如果你的示範音檔<b>已經含空白</b>（唸一句 → 留一段空白 → 下一句）：</p>
+    <h2><span class="n">6</span>⭐ 讓學生「一句一句跟讀」的兩種做法</h2>
+    <h3>方法一（最省事）· 音檔本身已剪好停頓</h3>
+    <p>音檔已含空白（唸一句→留空白→下一句）：上傳音檔、<b>不要勾</b>「逐句交錯跟讀」、儲存即可。學生連續播放就會在空白處跟著唸。</p>
+    <h3>方法二 · 連續音檔讓系統插空白</h3>
     <ol>
-      <li>編輯課文，<b>直接上傳這個剪好的音檔</b>。</li>
-      <li><b>不要勾</b>「🎧 開啟逐句交錯跟讀」（維持一般模式）。</li>
-      <li>儲存、派作業。</li>
-    </ol>
-    <div class="callout">學生按 START，音檔連續播放，停頓本來就在裡面 —— 學生就會在空白處跟著唸，全程錄下來。<b>不用做任何分句標記。</b></div>
-
-    <h3>方法二 · 音檔是連續的，讓系統幫你插空白</h3>
-    <p>如果音檔沒有空白、是一直唸下去的：</p>
-    <ol>
-      <li>先設好<b>示範音檔</b>（上傳或貼網址）。</li>
-      <li>勾選 <b>🎧 開啟逐句交錯跟讀</b>。</li>
-      <li>按 <b>▶ 播放</b> 聽音檔，<b>每聽完一句就按一次「✂ 在這裡分句」</b> —— 停頓位置<b>完全由你決定</b>，點在哪就斷在哪。</li>
-      <li>標好的分句點會列成 <span class="tag">1. 0:03</span><span class="tag">2. 0:08</span>…，可單獨 ✕ 刪或全部清除。</li>
-      <li>設<b>空白倍數</b>：空白時間 = 該句長度 × 倍數。程度較弱的班級調高（例 2.0），程度好的調低（例 1.2）。</li>
-      <li>按<b>儲存</b>。</li>
-    </ol>
-
-    <div class="callout warn">怎麼選？<b>已經有剪好停頓的音檔 → 用方法一</b>（免標記，但要改空白長短得重剪音檔）。<b>只有連續音檔 → 用方法二</b>（要標記，但空白長短可用倍數隨時調，同一音檔還能給不同程度的班級用不同空白）。</div>
-  </section>
-
-  <section>
-    <h2><span class="n">6</span>聽錄音、打分數（🎧 學生錄音）</h2>
-    <ol>
-      <li>可用<b>班級 / 課次 / 姓名</b>篩選。</li>
-      <li>按 <b>▶ 播放</b> 線上聽學生錄音；播放器旁有 <b>⬇ 下載</b>。</li>
-      <li>按 <b>✍ 評分</b> 填分數（0–100）與評語，儲存後狀態變「已評」。</li>
-      <li>不要的可按 <b>🗑</b> 刪除（含雲端檔案）。</li>
+      <li>編輯課文，勾 <b>🎧 開啟逐句交錯跟讀</b>。</li>
+      <li>按 ▶ 播放，<b>每聽完一句就按「✂ 在這裡分句」</b>（停頓位置由你決定）。</li>
+      <li>設<b>空白倍數</b>（空白＝該句長度×倍數；程度弱的班級調高）。儲存。</li>
     </ol>
   </section>
 
   <section>
-    <h2><span class="n">7</span>看繳交狀況與統計</h2>
+    <h2><span class="n">7</span>老師：派作業（📌）</h2>
+    <ol>
+      <li>到 <b>📌 派作業</b>，上方選<b>要派給哪個班級</b>。</li>
+      <li>按 <b>＋ 指派作業</b> → 選<b>書本</b> → 選<b>課次</b> → （可選）填截止日 → 儲存。</li>
+      <li>該班學生登入後，「我的作業」就會出現這一課。</li>
+    </ol>
+    <div class="callout">學生只看得到「有派給他班級」的作業。想讓學生練別課，就再派一份。</div>
+  </section>
+
+  <section>
+    <h2><span class="n">8</span>老師：聽錄音、打分數＋評語（🎧）</h2>
+    <ol>
+      <li>到 <b>🎧 學生錄音</b>，可用班級/課次/姓名篩選。</li>
+      <li>按 <b>▶ 播放</b> 線上聽（旁邊有 <b>⬇ 下載</b>）。</li>
+      <li>按 <b>✍ 評分</b> 填分數（0–100）與<b>評語</b>，儲存。</li>
+      <li>學生下次登入「我的作業」就會看到 <b>✅ 已評分：X 分</b> 和<b>老師評語</b>。</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><span class="n">9</span>其他：繳交狀況、改密碼</h2>
     <table>
-      <tr><th>想看什麼</th><th>去哪個分頁</th></tr>
-      <tr><td>誰交了、交了幾次、交了哪些課</td><td>👤 學生繳交</td></tr>
-      <tr><td>總繳交數、學生人數、已/待評、各課平均分</td><td>📊 統計</td></tr>
+      <tr><th>想做的事</th><th>去哪</th></tr>
+      <tr><td>看誰交了、交了哪些</td><td>👤 繳交彙整</td></tr>
+      <tr><td>各課繳交數、平均分</td><td>📊 統計</td></tr>
+      <tr><td>改後台密碼</td><td>⚙️ 設定</td></tr>
     </table>
   </section>
 
   <section>
-    <h2><span class="n">8</span>改後台密碼（⚙️ 設定）</h2>
-    <ul>
-      <li>⚙️ 設定 → 輸入新密碼兩次 → 更新。</li>
-      <li class="muted">兩位老師共用同一組密碼；改了之後記得互相告知。</li>
-    </ul>
+    <h2><span class="n">10</span>常見問題</h2>
+    <h3>🔴 學生用 LINE 點開卻不能錄音（最常見）</h3>
+    <p>LINE 內建瀏覽器（尤其 iPhone）不支援錄音。請學生改用 <b>Safari／Chrome</b>：iPhone 點右下角分享圖示→「用 Safari 開啟」；Android 點右上「⋮」→「用其他瀏覽器開啟」。頁面偵測到 LINE 時也會自動跳橘色提示。</p>
+    <h3>學生登入後說「沒有作業」</h3>
+    <p>代表老師還沒<b>派作業</b>給他的班級，或作業被設成隱藏。到 📌 派作業 指派一份即可。</p>
+    <h3>學生點不到自己名字 / 進不去</h3>
+    <p>確認（1）班級代碼正確、（2）老師已把該學生加進<b>那個班的名單</b>、（3）若有設 PIN，PIN 要對。</p>
+    <h3>想換一個學生登入</h3>
+    <p>在「我的作業」右上按 <b>登出</b>，就會回到登入頁重新輸入代碼。</p>
   </section>
 
-  <section>
-    <h2><span class="n">9</span>常見問題</h2>
-    <h3>🔴 學生用 LINE 點開卻不能錄音（最常見！）</h3>
-    <p><b>LINE 內建瀏覽器（尤其 iPhone）不支援錄音</b>，這是 LINE 的限制。請學生改用手機的 <b>Safari／Chrome</b> 開啟：</p>
-    <ul>
-      <li>📱 <b>iPhone</b>：點畫面<b>右下角</b>的分享圖示 →「<b>用 Safari 開啟</b>」。</li>
-      <li>🤖 <b>Android</b>：點右上角「<b>⋮</b>」→「<b>用其他瀏覽器開啟</b>」。</li>
-    </ul>
-    <div class="callout">頁面偵測到用 LINE 開啟時，會<b>自動跳出橘色提示</b>教學生怎麼改用瀏覽器，還有「📋 複製網址」按鈕。你發連結時也可以順便提醒一句「請用 Safari 或 Chrome 開，不要直接在 LINE 裡錄」。</div>
-    <h3>學生說錄不到聲音 / 沒有老師的示範</h3>
-    <ul>
-      <li>確認學生按了麥克風「允許」。</li>
-      <li>用<b>方式 A 上傳</b>或把 mp3 放在系統同網域最穩；貼外部網址若不支援跨網域，老師示範會錄不進去。</li>
-    </ul>
-    <h3>逐句跟讀停頓怪怪的</h3>
-    <p>回編輯課文，重新播放、重點分句點；或調整空白倍數。分句點位置由你決定，可隨時改。</p>
-    <h3>送出失敗</h3>
-    <p>多半是網路或麥克風權限問題，請學生重新整理、確認允許麥克風後再試。</p>
-  </section>
-
-  <footer>
-    PAS English Lab · 老師使用手冊　|　需要新增功能或調整，請聯絡系統管理者。
-  </footer>
+  <footer>PAS English Lab · 使用手冊　|　需要新增功能或調整，請聯絡系統管理者。</footer>
 </div>
 </body>
 </html>
