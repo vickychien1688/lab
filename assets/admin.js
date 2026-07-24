@@ -279,8 +279,14 @@ function editLesson(l) {
     <div id="audioStatus" class="hint" style="margin:6px 0">${l.audioFileId ? '✅ 已有上傳的音檔（可直接用，或重新上傳覆蓋）' : '從電腦選 mp3/m4a 直接上傳；或用 AI 朗讀課文；或貼網址。'}</div>
     <div class="row" style="gap:8px; flex-wrap:wrap; align-items:center; margin:4px 0 8px">
       <button type="button" class="btn btn-primary btn-sm" onclick="genTts()">🎙 AI 朗讀課文產生音檔</button>
-      <select id="ttsVoice" style="max-width:120px; margin:0">
-        <option value="female">女聲</option><option value="male">男聲</option>
+      <select id="ttsVoice" style="max-width:230px; margin:0">
+        <option value="sparkle">Sparkles ✨ 活潑兒童（推薦）</option>
+        <option value="josh">Josh 👦 活力老師男聲</option>
+        <option value="lily">Lily 🌸 甜美年輕女聲</option>
+        <option value="bella">Bella ☀️ 明亮教學女聲</option>
+        <option value="kimberly">Kimberly 🍵 溫暖沉穩女聲</option>
+        <option value="female">Rachel 標準美式女聲</option>
+        <option value="male">Adam 標準美式男聲</option>
       </select>
       <span id="ttsStatus" class="hint"></span>
     </div>

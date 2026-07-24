@@ -306,8 +306,13 @@ async function saveElevenKey(d: any) {
   return { ok: true };
 }
 const TTS_VOICES: Record<string, string> = {
-  female: "21m00Tcm4TlvDq8ikWAM", // Rachel（女聲・美式）
-  male: "pNInz6obpgDQGcFmaJgB",   // Adam（男聲・美式）
+  sparkle: "tapn1QwocNXk3viVSowa",  // Sparkles for Kids（活潑兒童）
+  josh: "nzFihrBIvB34imQBuxub",     // Josh - Teacher for Kids（活力老師男聲）
+  lily: "Pt5YrLNyu6d2s3s4CVMg",     // Lily - Soft, Cute and Sweet（甜美年輕女聲）
+  bella: "hpp4J3VqNfWAUOO0d1Us",    // Bella - Professional, Bright, Warm（明亮教學女聲）
+  kimberly: "w2CTE3MYza6FgBnETYNT", // Kimberly - Warm, Calm & Natural（溫暖沉穩女聲）
+  female: "21m00Tcm4TlvDq8ikWAM",   // Rachel（標準美式女聲）
+  male: "pNInz6obpgDQGcFmaJgB",     // Adam（標準美式男聲）
 };
 async function tts(d: any) {
   const text = String(d.text || "").trim();
@@ -315,7 +320,7 @@ async function tts(d: any) {
   if (text.length > 5000) return { ok: false, error: "課文太長（AI 朗讀上限 5000 字元），請分段" };
   const key = await elevenKey();
   if (!key) return { ok: false, error: "尚未設定 ElevenLabs API Key（請主帳號到 ⚙️ 設定分頁貼上）" };
-  const voice = TTS_VOICES[String(d.voice || "female")] || String(d.voice || TTS_VOICES.female);
+  const voice = TTS_VOICES[String(d.voice || "sparkle")] || String(d.voice || TTS_VOICES.sparkle);
   const res = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`,
     {
