@@ -46,7 +46,27 @@ function logout() { sessionStorage.removeItem('pas_pw'); sessionStorage.removeIt
 function applyRole() {
   const isAdmin = ME.role === 'admin';
   const t = document.querySelector('.tab[data-tab="teachers"]'); if (t) t.classList.toggle('hidden', !isAdmin);
+  const ec = $('elevenCard'); if (ec) ec.classList.toggle('hidden', !isAdmin);
   const who = $('whoami'); if (who) who.innerText = '👤 ' + (ME.name || '') + (isAdmin ? '（主帳號）' : '');
+  updateElevenStatus();
+}
+async function updateElevenStatus() {
+  const msg = $('elevenMsg'); if (!msg || ME.role !== 'admin') return;
+  try {
+    const r = await apiCall({ action: 'hasElevenKey', password: PW });
+    if (r.ok) msg.innerText = r.configured ? '✅ 已設定 Key，AI 朗讀可以使用' : '尚未設定 Key';
+  } catch (e) {}
+}
+async function saveElevenKey() {
+  const key = ($('elevenKeyInput').value || '').trim();
+  if (!key) { $('elevenMsg').innerText = '❌ 請先貼上 Key'; return; }
+  $('elevenMsg').innerText = '儲存中…';
+  try {
+    const r = await apiCall({ action: 'saveElevenKey', password: PW, key });
+    if (!r.ok) throw new Error(r.error || r.message || 'fail');
+    $('elevenKeyInput').value = '';
+    $('elevenMsg').innerText = '✅ 已儲存！所有老師現在都能用 AI 朗讀了';
+  } catch (e) { $('elevenMsg').innerText = '❌ ' + (e.message || e); }
 }
 
 async function refreshAll() {
@@ -248,10 +268,22 @@ function editLesson(l) {
     <input type="hidden" id="lId" value="${esc(l.lessonId)}">
     <label class="fld">章節標題（例：CH1）</label><input id="lLabel" value="${esc(l.lessonLabel)}" placeholder="CH1">
     <label class="fld">課文</label><textarea id="lText">${esc(l.text)}</textarea>
+    <div class="row" style="gap:8px; flex-wrap:wrap; align-items:center; margin:6px 0 2px">
+      <input type="file" id="lOcrImg" accept="image/*" onchange="ocrImage()" class="hidden">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="$('lOcrImg').click()">📷 上傳圖片辨識文字（OCR）</button>
+      <span id="ocrStatus" class="hint"></span>
+    </div>
     <label class="fld">示範音檔（擇一即可）</label>
     <input type="file" id="lAudioFile" accept="audio/*" onchange="uploadAudioFile()" style="padding:8px">
     <input type="hidden" id="lAudioFileId" value="${esc(l.audioFileId || '')}">
-    <div id="audioStatus" class="hint" style="margin:6px 0">${l.audioFileId ? '✅ 已有上傳的音檔（可直接用，或重新上傳覆蓋）' : '從電腦選 mp3/m4a 直接上傳；或改用下面的網址。'}</div>
+    <div id="audioStatus" class="hint" style="margin:6px 0">${l.audioFileId ? '✅ 已有上傳的音檔（可直接用，或重新上傳覆蓋）' : '從電腦選 mp3/m4a 直接上傳；或用 AI 朗讀課文；或貼網址。'}</div>
+    <div class="row" style="gap:8px; flex-wrap:wrap; align-items:center; margin:4px 0 8px">
+      <button type="button" class="btn btn-primary btn-sm" onclick="genTts()">🎙 AI 朗讀課文產生音檔</button>
+      <select id="ttsVoice" style="max-width:120px; margin:0">
+        <option value="female">女聲</option><option value="male">男聲</option>
+      </select>
+      <span id="ttsStatus" class="hint"></span>
+    </div>
     <input id="lAudio" value="${esc(l.audioUrl)}" onblur="reloadMarkAudio()" placeholder="或貼音檔網址（相對路徑 G7/x.mp3 或 https://…）">
     <label class="fld">顯示給學生</label>
     <select id="lActive"><option value="yes" ${l.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${l.active === 'no' ? 'selected' : ''}>否</option></select>
@@ -329,6 +361,58 @@ async function uploadAudioFile() {
     $('audioStatus').innerText = '❌ 上傳失敗：' + (e.message || e);
   }
 }
+// ---- 圖片辨識文字（OCR，瀏覽器內建 Tesseract，不需金鑰） ----
+let TESS_READY = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  if (TESS_READY) return TESS_READY;
+  TESS_READY = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = resolve; s.onerror = () => reject(new Error('辨識引擎載入失敗，請檢查網路'));
+    document.head.appendChild(s);
+  });
+  return TESS_READY;
+}
+async function ocrImage() {
+  const inp = $('lOcrImg');
+  if (!inp || !inp.files || !inp.files[0]) return;
+  const file = inp.files[0];
+  const st = $('ocrStatus');
+  try {
+    st.innerText = '⏳ 載入辨識引擎…（第一次會多等幾秒）';
+    await loadTesseract();
+    const r = await Tesseract.recognize(file, 'eng', {
+      logger: m => { if (m.status === 'recognizing text') st.innerText = '⏳ 辨識中… ' + Math.round(m.progress * 100) + '%'; },
+    });
+    const text = (r.data.text || '').replace(/\n{3,}/g, '\n\n').trim();
+    if (!text) { st.innerText = '❌ 沒讀到文字，換張清楚一點的圖片試試'; return; }
+    const ta = $('lText');
+    ta.value = ta.value.trim() ? (ta.value.trim() + '\n\n' + text) : text;
+    st.innerText = '✅ 完成！文字已加進課文欄，請檢查有沒有錯字再儲存。';
+  } catch (e) {
+    st.innerText = '❌ 辨識失敗：' + (e.message || e);
+  } finally { inp.value = ''; }
+}
+
+// ---- AI 朗讀（ElevenLabs 文字轉語音） ----
+async function genTts() {
+  const text = ($('lText').value || '').trim();
+  const st = $('ttsStatus');
+  if (!text) { st.innerText = '❌ 課文是空的，請先輸入或用 OCR 辨識'; return; }
+  if (!confirm('用 AI 朗讀整段課文產生示範音檔？\n（產出後會自動填入音檔欄，可直接做逐句分句）')) return;
+  st.innerText = '⏳ AI 朗讀產生中…課文越長越久，請稍候';
+  try {
+    const r = await apiCall({ action: 'tts', text, voice: $('ttsVoice').value });
+    if (!r.ok) throw new Error(r.error || 'fail');
+    $('lAudio').value = r.url;
+    if ($('lAudioFileId')) $('lAudioFileId').value = '';
+    st.innerText = '✅ 完成！已填入音檔欄（記得按最下面「儲存」）';
+    $('audioStatus').innerText = '✅ 已產生 AI 朗讀音檔，可播放下方分句工具做節點。';
+    const a = $('markAudio'); if (a) { a.src = r.url; a.load(); }
+  } catch (e) { st.innerText = '❌ 失敗：' + (e.message || e); }
+}
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();

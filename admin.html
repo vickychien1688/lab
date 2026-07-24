@@ -144,6 +144,16 @@
       <div style="height:14px"></div>
       <button class="btn btn-primary" onclick="changePassword()">更新密碼</button>
       <p id="pwMsg" class="status"></p>
+      <div id="elevenCard">
+        <hr style="border-color:var(--line);margin:24px 0">
+        <div class="title-badge">🎙 AI 朗讀（ElevenLabs）</div>
+        <p class="hint">貼上 ElevenLabs 的 API Key 後，編輯課文就能一鍵把課文轉成示範音檔。Key 只存在後端，老師們都能使用此功能。</p>
+        <label class="fld">ElevenLabs API Key</label>
+        <input type="password" id="elevenKeyInput" placeholder="貼上 API Key（sk_ 開頭）" autocomplete="off">
+        <div style="height:10px"></div>
+        <button class="btn btn-primary" onclick="saveElevenKey()">儲存 Key</button>
+        <p id="elevenMsg" class="status"></p>
+      </div>
       <hr style="border-color:var(--line);margin:24px 0">
       <p class="hint">資料與音檔存放在 Supabase（Our Reading Space / english-hq 專案）：學生錄音在 paslab-rec、示範音檔在 paslab-audio，資料表以 paslab_ 開頭。</p>
     </div>
@@ -154,7 +164,7 @@
     <div class="card" style="max-width:640px;width:100%;max-height:90vh;overflow:auto;margin:0" id="modalBody"></div>
   </div>
 
-  <script src="assets/config.js"></script>
-  <script src="assets/admin.js"></script>
+  <script src="assets/config.js?v=20260724b"></script>
+  <script src="assets/admin.js?v=20260724b"></script>
 </body>
 </html>

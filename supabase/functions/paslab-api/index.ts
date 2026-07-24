@@ -296,6 +296,49 @@ async function deleteSubmission(d: any) {
   await q(sb.from("paslab_submissions").delete().eq("id", Number(d.row)).select());
   return { ok: true };
 }
+// ---------- ElevenLabs 文字轉語音 ----------
+async function elevenKey(): Promise<string> {
+  const rows = await q(sb.from("paslab_config").select("value").eq("key", "elevenApiKey"));
+  return rows?.[0]?.value ?? "";
+}
+async function saveElevenKey(d: any) {
+  await q(sb.from("paslab_config").upsert({ key: "elevenApiKey", value: String(d.key || "").trim() }).select());
+  return { ok: true };
+}
+const TTS_VOICES: Record<string, string> = {
+  female: "21m00Tcm4TlvDq8ikWAM", // Rachel（女聲・美式）
+  male: "pNInz6obpgDQGcFmaJgB",   // Adam（男聲・美式）
+};
+async function tts(d: any) {
+  const text = String(d.text || "").trim();
+  if (!text) return { ok: false, error: "課文是空的，請先輸入文字" };
+  if (text.length > 5000) return { ok: false, error: "課文太長（AI 朗讀上限 5000 字元），請分段" };
+  const key = await elevenKey();
+  if (!key) return { ok: false, error: "尚未設定 ElevenLabs API Key（請主帳號到 ⚙️ 設定分頁貼上）" };
+  const voice = TTS_VOICES[String(d.voice || "female")] || String(d.voice || TTS_VOICES.female);
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`,
+    {
+      method: "POST",
+      headers: { "xi-api-key": key, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text, model_id: "eleven_multilingual_v2",
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+      }),
+    },
+  );
+  if (!res.ok) {
+    const msg = (await res.text()).slice(0, 300);
+    return { ok: false, error: `ElevenLabs 回應 ${res.status}：${msg}` };
+  }
+  const buf = await res.arrayBuffer();
+  const path = `lessons/tts_${Date.now()}.mp3`;
+  const up = await sb.storage.from("paslab-audio").upload(path, buf, { contentType: "audio/mpeg" });
+  if (up.error) return { ok: false, error: up.error.message };
+  const url = sb.storage.from("paslab-audio").getPublicUrl(path).data.publicUrl;
+  return { ok: true, url };
+}
+
 async function setPassword(d: any) {
   const next = String(d.newPassword || "").trim();
   if (!next) return { ok: false, error: "密碼不可為空" };
@@ -356,6 +399,9 @@ Deno.serve(async (req) => {
       case "deleteStudent": return json(await deleteStudent(d));
       case "saveAssignment": return json(await saveAssignment(d));
       case "deleteAssignment": return json(await deleteAssignment(d));
+      case "tts": return json(await tts(d));
+      case "hasElevenKey": return json({ ok: true, configured: !!(await elevenKey()) });
+      case "saveElevenKey": return json(isAdmin ? await saveElevenKey(d) : PERM_ERR);
       case "grade": return json(await grade(d));
       case "deleteSubmission": return json(await deleteSubmission(d));
       case "setPassword": return json(isAdmin ? await setPassword(d) : PERM_ERR);
