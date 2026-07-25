@@ -205,7 +205,7 @@ function renderLessons() {
       <td><b>${esc(c.bookTitle || c.classId)}</b></td>
       <td>${DB.lessons.filter(l => l.classId === c.classId).length}</td>
       <td>${String(c.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='editClass(${JSON.stringify(c)})'>編輯</button>
+      <td><button class="btn btn-ghost btn-sm" onclick="editClassById('${esc(c.classId)}')">編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delClass('${esc(c.classId)}')">🗑</button></td>
     </tr>`).join('') || '<tr><td colspan="4" class="hint">還沒有書，按右上「＋ 新增書本」。</td></tr>'}`;
 
@@ -216,10 +216,18 @@ function renderLessons() {
       <td>${esc(String(l.text).slice(0, 24))}…</td>
       <td>${(l.audioUrl || l.audioFileId) ? '🎵' : '—'}${String(l.shadowMode).toLowerCase() === 'yes' ? ' 🎧逐句' : ''}</td>
       <td>${String(l.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='editLesson(${JSON.stringify(l)})'>編輯</button>
+      <td><button class="btn btn-ghost btn-sm" onclick="editLessonById('${esc(l.classId)}','${esc(l.lessonId)}')">編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delLesson('${esc(l.classId)}','${esc(l.lessonId)}')">🗑</button></td>
     </tr>`).join('')}`;
 }
+
+// 用 id 查資料再開編輯窗（避免把整筆資料塞進按鈕屬性，內容有引號會壞掉）
+function editClassById(id) { editClass(DB.classes.find(c => c.classId === id)); }
+function editLessonById(cid, lid) { editLesson(DB.lessons.find(l => l.classId === cid && l.lessonId === lid)); }
+function editRoomById(id) { editRoom(DB.rooms.find(r => r.roomId === id)); }
+function editStudentById(id) { editStudent(DB.students.find(s => s.studentId === id)); }
+function editAssignmentById(id) { editAssignment(DB.assignments.find(a => a.assignId === id)); }
+function editTeacherById(u) { editTeacher(DB.teachers.find(t => t.username === u)); }
 
 function editClass(c) {
   EDITING_EXISTING = !!(c && c.classId);
@@ -502,7 +510,7 @@ function renderRooms() {
       <td>${esc(teacherLabel(r.owner))}</td>
       <td>${DB.students.filter(s => s.roomId === r.roomId).length}</td>
       <td>${String(r.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='editRoom(${JSON.stringify(r)})'>編輯</button>
+      <td><button class="btn btn-ghost btn-sm" onclick="editRoomById('${esc(r.roomId)}')">編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delRoom('${esc(r.roomId)}')">🗑</button></td>
     </tr>`).join('') || '<tr><td colspan="6" class="hint">還沒有班級，按右上「＋ 新增班級」。</td></tr>'}`;
 }
@@ -557,7 +565,7 @@ function renderRoster() {
     ${list.map(s => `<tr>
       <td><b>${esc(s.name)}</b></td><td>${esc(s.pin) || '—'}</td>
       <td>${String(s.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='editStudent(${JSON.stringify(s)})'>編輯</button>
+      <td><button class="btn btn-ghost btn-sm" onclick="editStudentById('${esc(s.studentId)}')">編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delStudent('${esc(s.studentId)}')">🗑</button></td>
     </tr>`).join('') || `<tr><td colspan="4" class="hint">${DB.rooms.length ? '這個班還沒有學生，按「＋ 新增學生」或「批次貼上名單」。' : '請先到「班級」分頁新增班級。'}</td></tr>`}`;
 }
@@ -614,7 +622,7 @@ function renderAssignments() {
       <td><b>${esc(bookLabel(a.classId))}</b> · ${esc(lessonLabelOf(a.classId, a.lessonId))}</td>
       <td>${esc(a.dueDate) || '—'}</td>
       <td>${String(a.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='editAssignment(${JSON.stringify(a)})'>編輯</button>
+      <td><button class="btn btn-ghost btn-sm" onclick="editAssignmentById('${esc(a.assignId)}')">編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delAssignment('${esc(a.assignId)}')">🗑</button></td>
     </tr>`).join('') || `<tr><td colspan="4" class="hint">${DB.rooms.length ? '這個班還沒派作業，按「＋ 指派作業」。' : '請先到「班級」分頁新增班級。'}</td></tr>`}`;
 }
@@ -663,7 +671,7 @@ function renderTeachers() {
       <td><b>${esc(x.username)}</b></td><td>${esc(x.name)}</td><td>${esc(x.password)}</td>
       <td>${x.role === 'admin' ? '主帳號級' : '老師'}</td>
       <td>${String(x.active).toLowerCase() === 'no' ? '停用' : '✅'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='editTeacher(${JSON.stringify(x)})'>編輯</button>
+      <td><button class="btn btn-ghost btn-sm" onclick="editTeacherById('${esc(x.username)}')">編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delTeacher('${esc(x.username)}')">🗑</button></td>
     </tr>`).join('') || '<tr><td colspan="6" class="hint">還沒有其他老師帳號，按右上「＋ 新增老師」。</td></tr>'}`;
 }
