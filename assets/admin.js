@@ -502,9 +502,14 @@ function teacherLabel(u) {
 }
 function renderRooms() {
   const t = $('roomTable'); if (!t) return;
+  const n = DB.rooms.length;
   t.innerHTML = `
-    <tr><th>班級名稱</th><th>班級代碼</th><th>負責老師</th><th>學生數</th><th>顯示</th><th></th></tr>
-    ${DB.rooms.map(r => `<tr>
+    <tr><th style="width:76px">順序</th><th>班級名稱</th><th>班級代碼</th><th>負責老師</th><th>學生數</th><th>顯示</th><th></th></tr>
+    ${DB.rooms.map((r, i) => `<tr>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" title="上移" onclick="moveRoom('${esc(r.roomId)}',-1)" ${i === 0 ? 'disabled style="opacity:.3"' : ''}>↑</button>
+        <button class="btn btn-ghost btn-sm" title="下移" onclick="moveRoom('${esc(r.roomId)}',1)" ${i === n - 1 ? 'disabled style="opacity:.3"' : ''}>↓</button>
+      </td>
       <td><b>${esc(r.roomName)}</b></td>
       <td><span class="pill reviewed">${esc(r.code)}</span></td>
       <td>${esc(teacherLabel(r.owner))}</td>
@@ -512,7 +517,25 @@ function renderRooms() {
       <td>${String(r.active).toLowerCase() === 'no' ? '隱藏' : '✅'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="editRoomById('${esc(r.roomId)}')">編輯</button>
           <button class="btn btn-danger btn-sm" onclick="delRoom('${esc(r.roomId)}')">🗑</button></td>
-    </tr>`).join('') || '<tr><td colspan="6" class="hint">還沒有班級，按右上「＋ 新增班級」。</td></tr>'}`;
+    </tr>`).join('') || '<tr><td colspan="7" class="hint">還沒有班級，按右上「＋ 新增班級」。</td></tr>'}`;
+}
+// 上移/下移班級：畫面立即更新，順序存回雲端
+let MOVING_ROOM = false;
+async function moveRoom(id, dir) {
+  if (MOVING_ROOM) return;
+  const arr = DB.rooms;
+  const i = arr.findIndex(r => r.roomId === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  renderRooms(); fillRoomSelects();
+  MOVING_ROOM = true;
+  try {
+    const changed = [];
+    arr.forEach((r, idx) => { if (Number(r.order) !== idx + 1) { r.order = idx + 1; changed.push(r); } });
+    for (const r of changed) {
+      await apiCall({ action: 'saveRoom', password: PW, roomId: r.roomId, roomName: r.roomName, code: r.code, owner: r.owner || '', active: r.active, order: r.order });
+    }
+  } finally { MOVING_ROOM = false; }
 }
 function editRoom(r) {
   const isNew = !(r && r.roomId);
@@ -537,6 +560,7 @@ function editRoom(r) {
     <label class="fld">顯示</label>
     <select id="kActive"><option value="yes" ${r.active !== 'no' ? 'selected' : ''}>是</option><option value="no" ${r.active === 'no' ? 'selected' : ''}>否</option></select>
     <input type="hidden" id="kId" value="${esc(r.roomId)}">
+    <input type="hidden" id="kOrder" value="${esc(r.order || (DB.rooms.length + 1))}">
     <div style="height:12px"></div>
     <div class="row"><button class="btn btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn btn-primary" onclick="saveRoom()">儲存</button></div>`);
@@ -547,7 +571,7 @@ async function saveRoom() {
   if (!code) return alert('請填班級代碼');
   if (DB.rooms.some(r => r.roomId !== $('kId').value && String(r.code).trim().toLowerCase() === code.toLowerCase()))
     return alert('這個班級代碼已被其他班級使用，請換一個');
-  const r = await apiCall({ action: 'saveRoom', password: PW, roomId: $('kId').value, roomName: name, code, owner: ($('kOwner') && $('kOwner').value) || '', active: $('kActive').value });
+  const r = await apiCall({ action: 'saveRoom', password: PW, roomId: $('kId').value, roomName: name, code, owner: ($('kOwner') && $('kOwner').value) || '', active: $('kActive').value, order: $('kOrder') ? $('kOrder').value : '' });
   if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
 }
 async function delRoom(id) {
