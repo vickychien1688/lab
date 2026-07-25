@@ -352,6 +352,8 @@ async function tts(d: any) {
   const key = await elevenKey();
   if (!key) return { ok: false, error: "尚未設定 ElevenLabs API Key（請主帳號到 ⚙️ 設定分頁貼上）" };
   const voice = TTS_VOICES[String(d.voice || "sparkle")] || String(d.voice || TTS_VOICES.sparkle);
+  // 語速：0.7（最慢）〜1.2（最快），預設 1.0
+  const speed = Math.min(1.2, Math.max(0.7, Number(d.speed || 1) || 1));
   const res = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`,
     {
@@ -359,7 +361,7 @@ async function tts(d: any) {
       headers: { "xi-api-key": key, "Content-Type": "application/json" },
       body: JSON.stringify({
         text, model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+        voice_settings: { stability: 0.5, similarity_boost: 0.75, speed },
       }),
     },
   );

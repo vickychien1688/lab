@@ -318,6 +318,12 @@ function editLesson(l) {
         <option value="female">Rachel 標準美式女聲</option>
         <option value="male">Adam 標準美式男聲</option>
       </select>
+      <select id="ttsSpeed" style="max-width:120px; margin:0">
+        <option value="0.7">🐢 很慢</option>
+        <option value="0.8" selected>慢</option>
+        <option value="0.9">稍慢</option>
+        <option value="1">正常</option>
+      </select>
       <span id="ttsStatus" class="hint"></span>
     </div>
     <input id="lAudio" value="${esc(l.audioUrl)}" onblur="reloadMarkAudio()" placeholder="或貼音檔網址（相對路徑 G7/x.mp3 或 https://…）">
@@ -439,7 +445,7 @@ async function genTts() {
   if (!confirm('用 AI 朗讀整段課文產生示範音檔？\n（產出後會自動填入音檔欄，可直接做逐句分句）')) return;
   st.innerText = '⏳ AI 朗讀產生中…課文越長越久，請稍候';
   try {
-    const r = await apiCall({ action: 'tts', password: PW, text, voice: $('ttsVoice').value });
+    const r = await apiCall({ action: 'tts', password: PW, text, voice: $('ttsVoice').value, speed: $('ttsSpeed').value });
     if (!r.ok) throw new Error(r.error || 'fail');
     $('lAudio').value = r.url;
     if ($('lAudioFileId')) $('lAudioFileId').value = '';
