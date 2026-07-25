@@ -158,6 +158,37 @@ async function myAssignments(d: any) {
   return { ok: true, assignments: out };
 }
 
+// 學生查自己的全部錄音（依 studentId，含書名/課次/分數）
+async function mySubmissions(d: any) {
+  if (!d.studentId) return { ok: false, error: "no student" };
+  const [subs, books, lessons] = await Promise.all([
+    q(sb.from("paslab_submissions").select("*").eq("student_id", String(d.studentId)).order("ts", { ascending: false })),
+    q(sb.from("paslab_books").select("*")),
+    q(sb.from("paslab_lessons").select("book_id, lesson_id, label")),
+  ]);
+  const out = (subs as any[]).map((s) => {
+    const b = (books as any[]).find((x) => x.id === s.book_id);
+    const l = (lessons as any[]).find((x) => x.book_id === s.book_id && x.lesson_id === s.lesson_id);
+    return {
+      id: s.id, timestamp: tsFmt(s.ts), bookTitle: b?.title || s.book_id,
+      lessonLabel: l?.label || s.lesson_id, durationSec: s.duration,
+      score: s.score ?? "", comment: s.comment ?? "", status: s.status,
+    };
+  });
+  return { ok: true, submissions: out };
+}
+// 學生播放自己的某一筆錄音（驗證錄音屬於該 studentId 才給網址）
+async function myAudio(d: any) {
+  const rows = await q(sb.from("paslab_submissions").select("*").eq("id", Number(d.id)));
+  const s = rows?.[0];
+  if (!s || !s.student_id || String(s.student_id) !== String(d.studentId || "")) {
+    return { ok: false, error: "not found" };
+  }
+  const sig = await sb.storage.from("paslab-rec").createSignedUrl(s.file_path, 3600);
+  if (sig.error) return { ok: false, error: sig.error.message };
+  return { ok: true, url: sig.data.signedUrl };
+}
+
 // ---------- 繳交 / 音檔 ----------
 async function submit(d: any) {
   if (!d.audio) return { ok: false, error: "沒有音檔資料" };
@@ -380,6 +411,8 @@ Deno.serve(async (req) => {
       case "roomByCode": return json(await roomByCode(d));
       case "studentLogin": return json(await studentLogin(d));
       case "myAssignments": return json(await myAssignments(d));
+      case "mySubmissions": return json(await mySubmissions(d));
+      case "myAudio": return json(await myAudio(d));
       case "whoami": {
         const a = await authInfo(d);
         return json(a ? { ok: true, ...a } : { ok: false, error: "auth" });

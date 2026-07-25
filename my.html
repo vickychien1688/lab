@@ -18,6 +18,11 @@
       <div class="title-badge">📋 我的作業</div>
       <div id="list"><p class="hint">載入中…</p></div>
     </div>
+    <div class="card">
+      <div class="title-badge">🎵 我的錄音紀錄</div>
+      <p class="hint">你交過的每一次錄音都存在這裡，隨時可以回聽、看自己的進步。</p>
+      <div id="recList"><p class="hint">載入中…</p></div>
+    </div>
   </div>
 
   <script src="assets/config.js?v=20260724b"></script>
@@ -52,6 +57,42 @@
         }).join('');
       } catch (e) { el('list').innerHTML = '<p class="hint">連線失敗，請重新整理。</p>'; }
     })();
+
+    // 我的錄音紀錄：每一筆都能回聽
+    (async () => {
+      if (!STU) return;
+      const box = el('recList');
+      try {
+        const r = await apiCall({ action: 'mySubmissions', studentId: STU.studentId });
+        if (!r.ok) { box.innerHTML = '<p class="hint">載入失敗，請重新整理。</p>'; return; }
+        if (!r.submissions.length) { box.innerHTML = '<p class="hint">還沒有錄音。交出第一份作業後，就會出現在這裡！</p>'; return; }
+        box.innerHTML = r.submissions.map(s => {
+          const graded = s.status === 'reviewed' && s.score !== '' && s.score != null;
+          const badge = graded ? `<span class="pill reviewed">✅ ${esc(s.score)} 分</span>` : '<span class="pill new">等待評分</span>';
+          const cmt = graded && s.comment ? `<div style="margin-top:6px;color:var(--text);font-size:14px"><b style="color:var(--primary)">老師評語：</b>${esc(s.comment)}</div>` : '';
+          return `<div style="background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <b>${esc(s.bookTitle)} · ${esc(s.lessonLabel)}</b>${badge}
+              <small style="color:var(--muted)">${esc(s.timestamp)}</small>
+              <button class="btn btn-ghost btn-sm" onclick="playMine(${s.id}, this)">▶ 回聽</button>
+            </div>
+            <div class="playerHolder"></div>${cmt}
+          </div>`;
+        }).join('');
+      } catch (e) { box.innerHTML = '<p class="hint">連線失敗，請重新整理。</p>'; }
+    })();
+    async function playMine(id, btn) {
+      const holder = btn.closest('div').parentElement.querySelector('.playerHolder');
+      if (holder.dataset.loaded) { holder.querySelector('audio').play(); return; }
+      btn.innerText = '載入中…';
+      try {
+        const r = await apiCall({ action: 'myAudio', id, studentId: STU.studentId });
+        btn.innerText = '▶ 回聽';
+        if (!r.ok) { alert('讀取失敗，請稍後再試'); return; }
+        holder.innerHTML = `<audio controls autoplay src="${esc(r.url)}" style="width:100%;margin-top:8px"></audio>`;
+        holder.dataset.loaded = '1';
+      } catch (e) { btn.innerText = '▶ 回聽'; alert('連線失敗'); }
+    }
   </script>
 </body>
 </html>

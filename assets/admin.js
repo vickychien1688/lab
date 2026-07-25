@@ -162,22 +162,44 @@ async function delSub(row) {
   if (r.ok) await refreshAll(); else alert('刪除失敗');
 }
 
-// ---------------- 學生繳交彙整 ----------------
+// ---------------- 學生繳交彙整（每位學生可展開全部錄音） ----------------
 function renderStudents() {
   const map = {};
   DB.submissions.forEach(s => {
-    const k = s.studentName || '(無名)';
+    const k = (s.studentId || '') + '|' + (s.studentName || '(無名)');
     (map[k] = map[k] || []).push(s);
   });
-  const names = Object.keys(map).sort();
+  const keys = Object.keys(map).sort((a, b) => a.split('|')[1].localeCompare(b.split('|')[1], 'zh-Hant'));
   $('studentsTable').innerHTML = `
-    <tr><th>學生</th><th>繳交次數</th><th>書·課次</th><th>最近繳交</th></tr>
-    ${names.map(n => {
-      const list = map[n];
-      const tags = [...new Set(list.map(s => `${bookLabel(s.classId)}-${lessonLabelOf(s.classId, s.lessonId)}`))].join('、');
+    <tr><th>學生</th><th>班級</th><th>繳交次數</th><th>最近繳交</th><th></th></tr>
+    ${keys.map((k, i) => {
+      const list = map[k];
+      const n = k.split('|')[1];
       const latest = list.map(s => s.timestamp).sort().slice(-1)[0] || '';
-      return `<tr><td><b>${esc(n)}</b></td><td>${list.length}</td><td>${esc(tags)}</td><td>${esc(latest)}</td></tr>`;
-    }).join('')}`;
+      const room = roomName(list[0].roomId) || '—';
+      const rows = list.map(s => {
+        const graded = s.status === 'reviewed' && s.score !== '' && s.score != null;
+        return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:6px 0">
+          <small style="color:var(--muted)">${esc(s.timestamp)}</small>
+          <b>${esc(bookLabel(s.classId))} · ${esc(lessonLabelOf(s.classId, s.lessonId))}</b>
+          ${graded ? `<span class="pill reviewed">✅ ${esc(s.score)} 分</span>` : '<span class="pill new">待評分</span>'}
+          <button class="btn btn-ghost btn-sm" onclick="playSub('${esc(s.fileId)}', this)">▶ 播放</button>
+          <span class="playerHolder"></span>
+          <button class="btn btn-ghost btn-sm" onclick="gradeSub(${s._row})">✍ 評分</button>
+        </div>`;
+      }).join('');
+      return `<tr>
+        <td><b>${esc(n)}</b></td><td>${esc(room)}</td><td>${list.length}</td><td>${esc(latest)}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="toggleStuRecs(${i}, this)">🎵 全部錄音 ▾</button></td>
+      </tr>
+      <tr class="hidden" data-sturec="${i}"><td colspan="5">${rows}</td></tr>`;
+    }).join('') || '<tr><td colspan="5" class="hint">尚無錄音</td></tr>'}`;
+}
+function toggleStuRecs(i, btn) {
+  const tr = document.querySelector(`tr[data-sturec="${i}"]`);
+  if (!tr) return;
+  tr.classList.toggle('hidden');
+  btn.innerText = tr.classList.contains('hidden') ? '🎵 全部錄音 ▾' : '🎵 收合 ▴';
 }
 
 // ---------------- 統計 ----------------
