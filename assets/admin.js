@@ -439,7 +439,7 @@ async function genTts() {
   if (!confirm('用 AI 朗讀整段課文產生示範音檔？\n（產出後會自動填入音檔欄，可直接做逐句分句）')) return;
   st.innerText = '⏳ AI 朗讀產生中…課文越長越久，請稍候';
   try {
-    const r = await apiCall({ action: 'tts', text, voice: $('ttsVoice').value });
+    const r = await apiCall({ action: 'tts', password: PW, text, voice: $('ttsVoice').value });
     if (!r.ok) throw new Error(r.error || 'fail');
     $('lAudio').value = r.url;
     if ($('lAudioFileId')) $('lAudioFileId').value = '';
