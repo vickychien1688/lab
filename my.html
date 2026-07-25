@@ -12,6 +12,7 @@
       <span class="brand" id="hello">…</span>
       <span class="spacer"></span>
       <button class="btn btn-ghost btn-sm" onclick="location.reload()">🔄 重新整理</button>
+      <button class="btn btn-ghost btn-sm" onclick="changePin()">🔒 PIN 碼</button>
       <button class="btn btn-ghost btn-sm" onclick="logout()">登出</button>
     </div>
     <div class="card">
@@ -42,11 +43,12 @@
         if (!r.ok) { box.innerHTML = '<p class="hint">載入失敗，請重新整理。</p>'; return; }
         if (!r.assignments.length) { box.innerHTML = '<p class="hint">目前老師還沒有派作業給你 🎉<br>過陣子再回來看看。</p>'; return; }
         box.innerHTML = r.assignments.map(a => {
-          const graded = a.status === 'reviewed' && a.score !== '' && a.score != null;
-          const badge = graded ? `<span class="pill reviewed">✅ 已評分：${esc(a.score)} 分</span>`
+          const reviewed = a.status === 'reviewed';
+          const hasScore = a.score !== '' && a.score != null;
+          const badge = reviewed ? (hasScore ? `<span class="pill reviewed">✅ 已評分：${esc(a.score)} 分</span>` : '<span class="pill reviewed">✅ 老師已看過</span>')
             : (a.done ? '<span class="pill new">📨 已繳交・等待老師評分</span>'
               : '<span class="pill" style="background:var(--card2);color:var(--muted);border:1px solid var(--line)">尚未錄音</span>');
-          const cmt = graded && a.comment ? `<div style="margin-top:8px;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px 12px"><b style="color:var(--primary)">老師評語：</b>${esc(a.comment)}</div>` : '';
+          const cmt = reviewed && a.comment ? `<div style="margin-top:8px;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px 12px"><b style="color:var(--primary)">老師評語：</b>${esc(a.comment)}</div>` : '';
           const due = a.dueDate ? ` <small style="color:var(--muted)">· 截止 ${esc(a.dueDate)}</small>` : '';
           const link = `student.html?class=${encodeURIComponent(a.classId)}&lesson=${encodeURIComponent(a.lessonId)}&assign=${encodeURIComponent(a.assignId)}`;
           return `<div style="background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px">
@@ -67,9 +69,10 @@
         if (!r.ok) { box.innerHTML = '<p class="hint">載入失敗，請重新整理。</p>'; return; }
         if (!r.submissions.length) { box.innerHTML = '<p class="hint">還沒有錄音。交出第一份作業後，就會出現在這裡！</p>'; return; }
         box.innerHTML = r.submissions.map(s => {
-          const graded = s.status === 'reviewed' && s.score !== '' && s.score != null;
-          const badge = graded ? `<span class="pill reviewed">✅ ${esc(s.score)} 分</span>` : '<span class="pill new">等待評分</span>';
-          const cmt = graded && s.comment ? `<div style="margin-top:6px;color:var(--text);font-size:14px"><b style="color:var(--primary)">老師評語：</b>${esc(s.comment)}</div>` : '';
+          const reviewed = s.status === 'reviewed';
+          const hasScore = s.score !== '' && s.score != null;
+          const badge = reviewed ? (hasScore ? `<span class="pill reviewed">✅ ${esc(s.score)} 分</span>` : '<span class="pill reviewed">✅ 老師已看過</span>') : '<span class="pill new">等待評分</span>';
+          const cmt = reviewed && s.comment ? `<div style="margin-top:6px;color:var(--text);font-size:14px"><b style="color:var(--primary)">老師評語：</b>${esc(s.comment)}</div>` : '';
           return `<div style="background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <b>${esc(s.bookTitle)} · ${esc(s.lessonLabel)}</b>${badge}
@@ -81,6 +84,17 @@
         }).join('');
       } catch (e) { box.innerHTML = '<p class="hint">連線失敗，請重新整理。</p>'; }
     })();
+    // 學生自己設定/更改 PIN 碼
+    async function changePin() {
+      const oldPin = prompt('如果你已經有 PIN 碼，請先輸入舊的 PIN（沒有就直接按「好」）：');
+      if (oldPin === null) return;
+      const newPin = prompt('輸入新的 PIN 碼（4–6 位數字；留空＝取消 PIN）：');
+      if (newPin === null) return;
+      try {
+        const r = await apiCall({ action: 'setMyPin', studentId: STU.studentId, oldPin: oldPin.trim(), newPin: newPin.trim() });
+        alert(r.ok ? '✅ PIN 碼已更新！下次登入請用新的 PIN。' : '❌ ' + (r.error || '更新失敗'));
+      } catch (e) { alert('連線失敗，請再試一次'); }
+    }
     async function playMine(id, btn) {
       const holder = btn.closest('div').parentElement.querySelector('.playerHolder');
       if (holder.dataset.loaded) { holder.querySelector('audio').play(); return; }

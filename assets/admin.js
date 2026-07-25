@@ -338,6 +338,8 @@ function editLesson(l) {
       <div id="shadowBox" class="${shadowOn ? '' : 'hidden'}" style="background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:14px">
         <p class="hint">① 按 ▶ 播放音檔，<b>每聽完一句就按一次「✂ 在這裡分句」</b> — 停頓位置完全由你決定。<br>② 空白時間 = 該句長度 × 下方倍數（程度較弱的班級可調高）。</p>
         <audio id="markAudio" controls style="width:100%; margin:6px 0"></audio>
+        <canvas id="waveCanvas" onclick="waveSeek(event)" style="width:100%;height:110px;background:#0e2038;border-radius:10px;cursor:crosshair;display:block"></canvas>
+        <div class="hint" id="waveHint" style="margin:4px 0 8px">⏳ 波形載入中…</div>
         <div class="row" style="gap:8px; flex-wrap:wrap">
           <button type="button" class="btn btn-primary btn-sm" onclick="addMark()">✂ 在這裡分句</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="undoMark()">↩ 復原</button>
@@ -372,18 +374,78 @@ async function reloadMarkAudio() {
   const a = $('markAudio'); if (!a) return;
   // 1) 若剛選了本機檔案，直接用它（最即時）
   const inp = $('lAudioFile');
-  if (inp && inp.files && inp.files[0]) { a.src = URL.createObjectURL(inp.files[0]); a.load(); return; }
-  // 2) 已上傳的音檔：向後端要回來
-  const fid = ($('lAudioFileId') && $('lAudioFileId').value || '').trim();
-  if (fid) {
-    try {
-      const r = await apiCall({ action: 'lessonAudio', fileId: fid });
-      if (r.ok) { a.src = 'data:' + r.mime + ';base64,' + r.base64; a.load(); return; }
-    } catch (e) {}
-  }
-  // 3) 退回音檔網址
+  if (inp && inp.files && inp.files[0]) { const u = URL.createObjectURL(inp.files[0]); a.src = u; a.load(); loadWave(u); return; }
+  // 2) 退回音檔網址
   const src = ($('lAudio').value || '').trim();
-  if (src) { a.src = src; a.load(); }
+  if (src) { a.src = src; a.load(); loadWave(src); }
+  else { const h = $('waveHint'); if (h) h.innerText = '先上傳音檔或用 AI 朗讀，波形就會出現。'; }
+}
+
+// ---- 音檔波形圖（幫助老師看出句間停頓的位置） ----
+let WAVE = { peaks: null, dur: 0, raf: 0 };
+async function loadWave(src) {
+  const c = $('waveCanvas'); if (!c || !src) return;
+  WAVE.peaks = null; WAVE.dur = 0;
+  const hint = $('waveHint'); if (hint) hint.innerText = '⏳ 波形載入中…';
+  try {
+    const ab = await fetch(src).then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); });
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await ac.decodeAudioData(ab);
+    WAVE.dur = buf.duration;
+    const data = buf.getChannelData(0);
+    const W = 1200, step = Math.max(1, Math.floor(data.length / W));
+    const peaks = new Array(W).fill(0);
+    for (let i = 0; i < W; i++) {
+      let m = 0;
+      for (let j = i * step, e = Math.min(data.length, (i + 1) * step); j < e; j += 4) {
+        const v = Math.abs(data[j]); if (v > m) m = v;
+      }
+      peaks[i] = m;
+    }
+    WAVE.peaks = peaks;
+    if (ac.close) ac.close();
+    if (hint) hint.innerText = '💡 深藍低谷＝句子間的停頓。點波形任一處可跳到該位置，聽完一句就按「✂ 在這裡分句」。';
+    startWaveLoop();
+  } catch (e) { if (hint) hint.innerText = '（波形載入失敗，仍可直接用上方播放器分句）'; }
+}
+function drawWave() {
+  const c = $('waveCanvas'); if (!c || !WAVE.peaks) return;
+  const dpr = 2, W = (c.clientWidth || 600) * dpr, H = 110 * dpr;
+  if (c.width !== W) { c.width = W; c.height = H; }
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#0e2038'; ctx.fillRect(0, 0, W, H);
+  const n = WAVE.peaks.length, mid = H / 2;
+  const a = $('markAudio');
+  const prog = (a && WAVE.dur) ? Math.min(1, a.currentTime / WAVE.dur) : 0;
+  const bw = Math.max(1, W / n - 0.5);
+  for (let i = 0; i < n; i++) {
+    const h = Math.max(2, WAVE.peaks[i] * H * 0.86);
+    ctx.fillStyle = (i / n) <= prog ? '#dcbb6a' : '#4a5f7a';
+    ctx.fillRect(i / n * W, mid - h / 2, bw, h);
+  }
+  if (WAVE.dur) {
+    EDIT_MARKS.forEach((t, i) => {
+      const x = t / WAVE.dur * W;
+      ctx.strokeStyle = '#c19a3d'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      ctx.fillStyle = '#efe4c8'; ctx.font = 'bold ' + 13 * dpr + 'px sans-serif';
+      ctx.fillText(String(i + 1), x + 4 * dpr, 16 * dpr);
+    });
+    const px = prog * W;
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+  }
+}
+function startWaveLoop() {
+  cancelAnimationFrame(WAVE.raf);
+  const tick = () => { if (!$('waveCanvas')) { cancelAnimationFrame(WAVE.raf); return; } drawWave(); WAVE.raf = requestAnimationFrame(tick); };
+  WAVE.raf = requestAnimationFrame(tick);
+}
+function waveSeek(ev) {
+  const a = $('markAudio'), c = $('waveCanvas');
+  if (!a || !c || !WAVE.dur) return;
+  const rect = c.getBoundingClientRect();
+  a.currentTime = Math.max(0, Math.min(WAVE.dur, (ev.clientX - rect.left) / rect.width * WAVE.dur));
 }
 async function uploadAudioFile() {
   const inp = $('lAudioFile');
@@ -398,7 +460,7 @@ async function uploadAudioFile() {
     $('lAudio').value = r.url;
     if ($('lAudioFileId')) $('lAudioFileId').value = '';
     $('audioStatus').innerText = '✅ 已上傳：' + (r.fileName || file.name) + '（記得按最下面「儲存」才生效）';
-    const a = $('markAudio'); if (a) { a.src = URL.createObjectURL(file); a.load(); } // 立即可用來分句
+    const a = $('markAudio'); if (a) { const u = URL.createObjectURL(file); a.src = u; a.load(); loadWave(u); } // 立即可用來分句
   } catch (e) {
     $('audioStatus').innerText = '❌ 上傳失敗：' + (e.message || e);
   }
@@ -451,7 +513,7 @@ async function genTts() {
     if ($('lAudioFileId')) $('lAudioFileId').value = '';
     st.innerText = '✅ 完成！已填入音檔欄（記得按最下面「儲存」）';
     $('audioStatus').innerText = '✅ 已產生 AI 朗讀音檔，可播放下方分句工具做節點。';
-    const a = $('markAudio'); if (a) { a.src = r.url; a.load(); }
+    const a = $('markAudio'); if (a) { a.src = r.url; a.load(); loadWave(r.url); }
   } catch (e) { st.innerText = '❌ 失敗：' + (e.message || e); }
 }
 
@@ -759,4 +821,4 @@ async function delTeacher(u) {
 
 // ---------------- Modal ----------------
 function openModal(html) { $('modalBody').innerHTML = html; $('modal').classList.remove('hidden'); }
-function closeModal() { $('modal').classList.add('hidden'); }
+function closeModal() { $('modal').classList.add('hidden'); if (window.WAVE) cancelAnimationFrame(WAVE.raf); }

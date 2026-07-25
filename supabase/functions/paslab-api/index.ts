@@ -177,6 +177,18 @@ async function mySubmissions(d: any) {
   });
   return { ok: true, submissions: out };
 }
+// 學生自己設定/更改 PIN 碼（有舊 PIN 需先驗證）
+async function setMyPin(d: any) {
+  const rows = await q(sb.from("paslab_students").select("*").eq("id", String(d.studentId || "")));
+  const s = rows?.[0];
+  if (!s) return { ok: false, error: "找不到學生" };
+  const cur = String(s.pin || "").trim();
+  if (cur && String(d.oldPin || "").trim() !== cur) return { ok: false, error: "舊 PIN 碼不對喔" };
+  const next = String(d.newPin || "").trim();
+  if (next && !/^\d{4,6}$/.test(next)) return { ok: false, error: "PIN 要是 4–6 位數字" };
+  await q(sb.from("paslab_students").update({ pin: next }).eq("id", s.id).select());
+  return { ok: true };
+}
 // 學生播放自己的某一筆錄音（驗證錄音屬於該 studentId 才給網址）
 async function myAudio(d: any) {
   const rows = await q(sb.from("paslab_submissions").select("*").eq("id", Number(d.id)));
@@ -415,6 +427,7 @@ Deno.serve(async (req) => {
       case "myAssignments": return json(await myAssignments(d));
       case "mySubmissions": return json(await mySubmissions(d));
       case "myAudio": return json(await myAudio(d));
+      case "setMyPin": return json(await setMyPin(d));
       case "whoami": {
         const a = await authInfo(d);
         return json(a ? { ok: true, ...a } : { ok: false, error: "auth" });
