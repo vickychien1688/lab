@@ -65,6 +65,7 @@ const subOut = (s: any) => ({
   _row: s.id, timestamp: tsFmt(s.ts), classId: s.book_id, lessonId: s.lesson_id,
   studentName: s.student_name, fileId: String(s.id), fileName: s.file_name,
   durationSec: s.duration, score: s.score ?? "", comment: s.comment ?? "", status: s.status,
+  commentImg: s.comment_img || "",
   roomId: s.room_id || "", studentId: s.student_id || "", assignId: s.assign_id || "",
 });
 
@@ -152,7 +153,7 @@ async function myAssignments(d: any) {
       bookTitle: book?.title || a.book_id, gradeName: "", lessonLabel: lesson?.label || a.lesson_id,
       dueDate: a.due_date || "", note: a.note || "",
       done: !!last, status: last?.status || "", score: last?.score ?? "",
-      comment: last?.comment ?? "", submittedAt: last ? tsFmt(last.ts) : "",
+      comment: last?.comment ?? "", commentImg: last?.comment_img || "", submittedAt: last ? tsFmt(last.ts) : "",
     };
   });
   return { ok: true, assignments: out };
@@ -172,7 +173,7 @@ async function mySubmissions(d: any) {
     return {
       id: s.id, timestamp: tsFmt(s.ts), bookTitle: b?.title || s.book_id,
       lessonLabel: l?.label || s.lesson_id, durationSec: s.duration,
-      score: s.score ?? "", comment: s.comment ?? "", status: s.status,
+      score: s.score ?? "", comment: s.comment ?? "", commentImg: s.comment_img || "", status: s.status,
     };
   });
   return { ok: true, submissions: out };
@@ -329,6 +330,7 @@ async function grade(d: any) {
   const patch: any = { status: d.status || "reviewed" };
   if (d.score !== undefined) patch.score = String(d.score ?? "");
   if (d.comment !== undefined) patch.comment = String(d.comment ?? "");
+  if (d.commentImg !== undefined) patch.comment_img = String(d.commentImg ?? "");
   await q(sb.from("paslab_submissions").update(patch).eq("id", Number(d.row)).select());
   return { ok: true };
 }

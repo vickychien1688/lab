@@ -143,16 +143,39 @@ function gradeSub(row) {
     <input id="gScore" type="number" min="0" max="100" value="${s.score === '' ? '' : esc(s.score)}">
     <label class="fld">評語</label>
     <textarea id="gComment">${esc(s.comment || '')}</textarea>
+    <label class="fld">附一張圖 🎁（獎勵貼紙、可愛圖案，可不加）</label>
+    <input type="file" id="gImgFile" accept="image/*" onchange="uploadGradeImg()" style="padding:8px">
+    <input type="hidden" id="gImg" value="${esc(s.commentImg || '')}">
+    <div id="gImgBox" style="margin:6px 0">${s.commentImg ? `<img src="${esc(s.commentImg)}" style="max-height:90px;border-radius:10px;display:block;margin-bottom:6px"><button type="button" class="btn btn-ghost btn-sm" onclick="removeGradeImg()">✕ 移除圖片</button>` : '<span class="hint">選一張圖，學生會在評語旁看到。</span>'}</div>
     <div style="height:14px"></div>
     <div class="row">
       <button class="btn btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn btn-primary" onclick="saveGrade(${row})">儲存</button>
     </div>`);
 }
+async function uploadGradeImg() {
+  const inp = $('gImgFile');
+  if (!inp || !inp.files || !inp.files[0]) return;
+  const file = inp.files[0];
+  if (file.size > 4 * 1024 * 1024) { alert('圖片請小於 4MB'); inp.value = ''; return; }
+  $('gImgBox').innerHTML = '<span class="hint">⏳ 上傳中…</span>';
+  try {
+    const base64 = await fileToBase64(file);
+    const r = await apiCall({ action: 'uploadAudio', password: PW, audio: base64, mime: file.type || 'image/png', filename: 'feedback_' + file.name });
+    if (!r.ok) throw new Error(r.error || 'fail');
+    $('gImg').value = r.url;
+    $('gImgBox').innerHTML = `<img src="${esc(r.url)}" style="max-height:90px;border-radius:10px;display:block;margin-bottom:6px"><button type="button" class="btn btn-ghost btn-sm" onclick="removeGradeImg()">✕ 移除圖片</button>`;
+  } catch (e) { $('gImgBox').innerHTML = '<span class="hint" style="color:var(--danger)">❌ 上傳失敗：' + esc(e.message || e) + '</span>'; }
+  finally { inp.value = ''; }
+}
+function removeGradeImg() {
+  $('gImg').value = '';
+  $('gImgBox').innerHTML = '<span class="hint">選一張圖，學生會在評語旁看到。</span>';
+}
 async function saveGrade(row) {
   const r = await apiCall({
     action: 'grade', password: PW, row,
-    score: $('gScore').value, comment: $('gComment').value, status: 'reviewed'
+    score: $('gScore').value, comment: $('gComment').value, commentImg: $('gImg').value, status: 'reviewed'
   });
   if (r.ok) { closeModal(); await refreshAll(); } else alert('儲存失敗');
 }

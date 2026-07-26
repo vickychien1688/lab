@@ -48,7 +48,8 @@
           const badge = reviewed ? (hasScore ? `<span class="pill reviewed">✅ 已評分：${esc(a.score)} 分</span>` : '<span class="pill reviewed">✅ 老師已看過</span>')
             : (a.done ? '<span class="pill new">📨 已繳交・等待老師評分</span>'
               : '<span class="pill" style="background:var(--card2);color:var(--muted);border:1px solid var(--line)">尚未錄音</span>');
-          const cmt = reviewed && a.comment ? `<div style="margin-top:8px;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px 12px"><b style="color:var(--primary)">老師評語：</b>${esc(a.comment)}</div>` : '';
+          const img = reviewed && a.commentImg ? `<div style="margin-top:8px"><img src="${esc(a.commentImg)}" style="max-width:180px;max-height:140px;border-radius:12px"></div>` : '';
+          const cmt = (reviewed && a.comment ? `<div style="margin-top:8px;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px 12px"><b style="color:var(--primary)">老師評語：</b>${esc(a.comment)}</div>` : '') + img;
           const due = a.dueDate ? ` <small style="color:var(--muted)">· 截止 ${esc(a.dueDate)}</small>` : '';
           const link = `student.html?class=${encodeURIComponent(a.classId)}&lesson=${encodeURIComponent(a.lessonId)}&assign=${encodeURIComponent(a.assignId)}`;
           return `<div style="background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px">
@@ -72,7 +73,8 @@
           const reviewed = s.status === 'reviewed';
           const hasScore = s.score !== '' && s.score != null;
           const badge = reviewed ? (hasScore ? `<span class="pill reviewed">✅ ${esc(s.score)} 分</span>` : '<span class="pill reviewed">✅ 老師已看過</span>') : '<span class="pill new">等待評分</span>';
-          const cmt = reviewed && s.comment ? `<div style="margin-top:6px;color:var(--text);font-size:14px"><b style="color:var(--primary)">老師評語：</b>${esc(s.comment)}</div>` : '';
+          const img2 = reviewed && s.commentImg ? `<div style="margin-top:6px"><img src="${esc(s.commentImg)}" style="max-width:150px;max-height:120px;border-radius:10px"></div>` : '';
+          const cmt = (reviewed && s.comment ? `<div style="margin-top:6px;color:var(--text);font-size:14px"><b style="color:var(--primary)">老師評語：</b>${esc(s.comment)}</div>` : '') + img2;
           return `<div style="background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <b>${esc(s.bookTitle)} · ${esc(s.lessonLabel)}</b>${badge}
