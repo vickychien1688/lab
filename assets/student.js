@@ -150,8 +150,17 @@
       const l = currentLesson();
       const marks = parseMarks(l.marks);
       const shadow = String(l.shadowMode).toLowerCase() === 'yes' && marks.length > 0;
-      if (shadow) {
-        runShadow(tAudio, marks, parseFloat(l.gapMultiplier) || 1.5);
+      const gm = parseFloat(l.gapMultiplier);
+      const mult = isNaN(gm) ? 1.5 : Math.max(0, gm);
+      if (shadow && mult === 0) {
+        // 音檔本身已含跟讀空白：直接連續播放，螢光筆跟著時間逐句亮
+        shadowAbort = false;
+        tAudio.currentTime = 0;
+        tAudio.onended = () => { tAudio.onended = null; stopRecording('✅ 完成 — 可試聽後送出'); };
+        tAudio.play();
+        el('status').innerText = '🎧 跟著唸！（音檔播完會自動停止）';
+      } else if (shadow) {
+        runShadow(tAudio, marks, mult || 1.5);
       } else {
         tAudio.currentTime = 0;
         tAudio.play();
@@ -169,6 +178,7 @@
   function stopRecording(msg) {
     shadowAbort = true;
     highlightSent(null); // 收掉螢光筆
+    el('teacherAudio').onended = null;
     if (shadowTimer) { clearTimeout(shadowTimer); shadowTimer = null; }
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     el('teacherAudio').pause();

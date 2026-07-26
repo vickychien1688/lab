@@ -342,13 +342,14 @@ function editLesson(l) {
         <div class="hint" id="waveHint" style="margin:4px 0 8px">⏳ 波形載入中…</div>
         <div class="row" style="gap:8px; flex-wrap:wrap">
           <button type="button" class="btn btn-primary btn-sm" onclick="addMark()">✂ 在這裡分句</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="autoDetectMarks()">⚡ 自動偵測分句（音檔已含空白用）</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="undoMark()">↩ 復原</button>
           <button type="button" class="btn btn-danger btn-sm" onclick="clearMarks()">🗑 清除</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="reloadMarkAudio()">🔄 重新載入音檔</button>
         </div>
         <div id="markList" style="margin-top:10px"></div>
-        <label class="fld">空白倍數（數字越大空白越久，例：1.5）</label>
-        <input id="lGapMult" type="number" step="0.1" min="0.2" value="${esc(l.gapMultiplier || '1.5')}" style="max-width:140px">
+        <label class="fld">空白倍數（例 1.5；<b>填 0＝音檔本身已含空白</b>，學生端不再停頓、螢光筆照樣逐句亮）</label>
+        <input id="lGapMult" type="number" step="0.1" min="0" value="${esc(l.gapMultiplier || '1.5')}" style="max-width:140px">
       </div>
     </div>
 
@@ -440,6 +441,31 @@ function startWaveLoop() {
   cancelAnimationFrame(WAVE.raf);
   const tick = () => { if (!$('waveCanvas')) { cancelAnimationFrame(WAVE.raf); return; } drawWave(); WAVE.raf = requestAnimationFrame(tick); };
   WAVE.raf = requestAnimationFrame(tick);
+}
+// 自動偵測分句：找音檔裡的空白段（給「已剪好、含跟讀空白」的自備音檔用）
+function autoDetectMarks() {
+  if (!WAVE.peaks || !WAVE.dur) { alert('波形還沒載入好，等波形圖出現後再按一次。'); return; }
+  const peaks = WAVE.peaks, n = peaks.length, dur = WAVE.dur;
+  const th = Math.max(0.03, Math.max(...peaks) * 0.10); // 靜音門檻
+  const minSilence = Math.max(2, Math.round(0.35 / dur * n)); // 至少 0.35 秒的空白才算
+  const marks = [];
+  let run = 0, seenSpeech = false;
+  for (let i = 0; i < n; i++) {
+    if (peaks[i] < th) { run++; continue; }
+    // 遇到聲音：若前面是一段夠長的空白（且不是音檔開頭的靜音），這裡就是「下一句的開始」
+    if (seenSpeech && run >= minSilence) {
+      const t = Math.max(0.1, (i / n) * dur - 0.05);
+      if (!marks.length || t - marks[marks.length - 1] > 0.5) marks.push(Math.round(t * 10) / 10);
+    }
+    seenSpeech = true;
+    run = 0;
+  }
+  marks.push(Math.round((dur - 0.05) * 10) / 10); // 最後一句的結尾
+  if (marks.length < 2) { alert('偵測不到明顯的空白段。請確認音檔句子之間有停頓，或改用手動「✂ 分句」。'); return; }
+  EDIT_MARKS = [...new Set(marks)].sort((a, b) => a - b);
+  renderMarks();
+  $('lGapMult').value = 0; // 音檔已含空白 → 學生端不再另外停頓
+  alert(`⚡ 偵測到 ${EDIT_MARKS.length} 句！\n\n請看波形圖上的金色線對不對（可點波形試聽、✕ 刪掉錯的、✂ 補標漏的）。\n空白倍數已自動設為 0（音檔已含空白，學生端不再另外停頓）。`);
 }
 function waveSeek(ev) {
   const a = $('markAudio'), c = $('waveCanvas');
