@@ -266,12 +266,15 @@ async function adminData(d: any) {
   const stats: Record<string, any> = {};
   for (const s of subs) {
     const k = s.book_id + "|" + s.lesson_id;
-    stats[k] ??= { classId: s.book_id, lessonId: s.lesson_id, count: 0, graded: 0, scoreSum: 0 };
+    stats[k] ??= { classId: s.book_id, lessonId: s.lesson_id, count: 0, graded: 0, scoreSum: 0, numCount: 0 };
     stats[k].count++;
-    const n = Number(s.score);
-    if (s.score !== "" && s.score != null && !isNaN(n)) { stats[k].graded++; stats[k].scoreSum += n; }
+    if (s.score !== "" && s.score != null) {
+      stats[k].graded++;
+      const n = Number(s.score);
+      if (!isNaN(n)) { stats[k].scoreSum += n; stats[k].numCount++; }
+    }
   }
-  const statList = Object.values(stats).map((v: any) => ({ ...v, avg: v.graded ? Math.round((v.scoreSum / v.graded) * 10) / 10 : null }));
+  const statList = Object.values(stats).map((v: any) => ({ ...v, avg: v.numCount ? Math.round((v.scoreSum / v.numCount) * 10) / 10 : null }));
   const teachers = isAdmin
     ? (await q(sb.from("paslab_teachers").select("*"))).map((t: any) => ({
         username: t.username, password: t.password, name: t.name, role: t.role, active: yn(t.active),
@@ -444,7 +447,7 @@ Deno.serve(async (req) => {
   } catch { d = {}; }
   const action = d.action || "ping";
   const AUTH_ERR = { ok: false, error: "auth", message: "帳號或密碼錯誤" };
-  const PERM_ERR = { ok: false, error: "perm", message: "只有主帳號可以管理老師帳號" };
+  const PERM_ERR = { ok: false, error: "perm", message: "只有主帳號可以進行這個操作" };
   try {
     switch (action) {
       case "ping": return json({ ok: true, service: "PAS English Lab (supabase)" });
