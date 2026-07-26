@@ -47,8 +47,10 @@ function applyRole() {
   const isAdmin = ME.role === 'admin';
   const t = document.querySelector('.tab[data-tab="teachers"]'); if (t) t.classList.toggle('hidden', !isAdmin);
   const ec = $('elevenCard'); if (ec) ec.classList.toggle('hidden', !isAdmin);
+  const sc = $('stickerCard'); if (sc) sc.classList.toggle('hidden', !isAdmin);
   const who = $('whoami'); if (who) who.innerText = '👤 ' + (ME.name || '') + (isAdmin ? '（主帳號）' : '');
   updateElevenStatus();
+  if (isAdmin) renderStickerAdmin();
 }
 async function updateElevenStatus() {
   const msg = $('elevenMsg'); if (!msg || ME.role !== 'admin') return;
@@ -139,11 +141,15 @@ function gradeSub(row) {
   const s = DB.submissions.find(x => x._row === row);
   openModal(`
     <div class="title-badge">✍ 評分：${esc(s.studentName)} / ${esc(bookLabel(s.classId))}·${esc(lessonLabelOf(s.classId, s.lessonId))}</div>
-    <label class="fld">分數（0–100，可留空）</label>
-    <input id="gScore" type="number" min="0" max="100" value="${s.score === '' ? '' : esc(s.score)}">
+    <label class="fld">評等（可不評）</label>
+    <select id="gScore">
+      ${['', 'A++', 'A+', 'A', 'B++', 'B+', 'B', 'C'].map(g =>
+        `<option value="${g}" ${String(s.score) === g ? 'selected' : ''}>${g || '—— 不評等 ——'}</option>`).join('')}
+    </select>
     <label class="fld">評語</label>
     <textarea id="gComment">${esc(s.comment || '')}</textarea>
-    <label class="fld">附一張圖 🎁（獎勵貼紙、可愛圖案，可不加）</label>
+    <label class="fld">附一張圖 🎁（點圖庫挑選，或自己上傳）</label>
+    <div id="gGallery" class="hint">圖庫載入中…</div>
     <input type="file" id="gImgFile" accept="image/*" onchange="uploadGradeImg()" style="padding:8px">
     <input type="hidden" id="gImg" value="${esc(s.commentImg || '')}">
     <div id="gImgBox" style="margin:6px 0">${s.commentImg ? `<img src="${esc(s.commentImg)}" style="max-height:90px;border-radius:10px;display:block;margin-bottom:6px"><button type="button" class="btn btn-ghost btn-sm" onclick="removeGradeImg()">✕ 移除圖片</button>` : '<span class="hint">選一張圖，學生會在評語旁看到。</span>'}</div>
@@ -152,6 +158,63 @@ function gradeSub(row) {
       <button class="btn btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn btn-primary" onclick="saveGrade(${row})">儲存</button>
     </div>`);
+  renderGradeGallery();
+}
+// ---- 評語圖庫 ----
+let STICKERS = null;
+async function fetchStickers(force) {
+  if (STICKERS && !force) return STICKERS;
+  try {
+    const r = await apiCall({ action: 'stickers', password: PW });
+    STICKERS = r.ok ? (r.stickers || []) : [];
+  } catch (e) { STICKERS = []; }
+  return STICKERS;
+}
+async function renderGradeGallery() {
+  const box = $('gGallery'); if (!box) return;
+  const list = await fetchStickers();
+  if (!$('gGallery')) return; // 視窗可能已關
+  if (!list.length) { box.innerHTML = '<span class="hint">圖庫還是空的——主帳號可到 ⚙️ 設定「🖼 評語圖庫」上傳。也可以直接用下面的檔案上傳。</span>'; return; }
+  box.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:4px 0">' +
+    list.map(s => `<img src="${esc(s.url)}" title="${esc(s.name)}" onclick="pickSticker('${esc(s.url)}')" style="height:64px;border-radius:10px;cursor:pointer;border:2px solid var(--line)">`).join('') + '</div>';
+}
+function pickSticker(url) {
+  $('gImg').value = url;
+  $('gImgBox').innerHTML = `<img src="${esc(url)}" style="max-height:90px;border-radius:10px;display:block;margin-bottom:6px"><button type="button" class="btn btn-ghost btn-sm" onclick="removeGradeImg()">✕ 移除圖片</button>`;
+}
+// 設定頁：圖庫管理（主帳號）
+async function renderStickerAdmin() {
+  const grid = $('stickerGrid'); if (!grid) return;
+  const list = await fetchStickers(true);
+  grid.innerHTML = list.length
+    ? list.map(s => `<div style="position:relative">
+        <img src="${esc(s.url)}" style="height:84px;border-radius:10px;border:1px solid var(--line)">
+        <button class="btn btn-danger btn-sm" style="position:absolute;top:-8px;right:-8px;padding:2px 8px" onclick="delSticker('${esc(s.name)}')">✕</button>
+      </div>`).join('')
+    : '<span class="hint">還沒有圖片，選幾張上傳吧！</span>';
+}
+async function uploadStickers() {
+  const inp = $('stickerFile');
+  if (!inp || !inp.files || !inp.files.length) return;
+  const files = [...inp.files];
+  $('stickerMsg').innerText = `⏳ 上傳中…（共 ${files.length} 張）`;
+  let done = 0;
+  for (const f of files) {
+    if (f.size > 4 * 1024 * 1024) continue;
+    try {
+      const base64 = await fileToBase64(f);
+      const r = await apiCall({ action: 'uploadSticker', password: PW, audio: base64, mime: f.type || 'image/png', filename: f.name });
+      if (r.ok) done++;
+    } catch (e) {}
+  }
+  inp.value = '';
+  $('stickerMsg').innerText = `✅ 完成，上傳了 ${done} 張`;
+  await renderStickerAdmin();
+}
+async function delSticker(name) {
+  if (!confirm('刪除這張圖？（已附在舊評語上的不受影響）')) return;
+  await apiCall({ action: 'deleteSticker', password: PW, name });
+  await renderStickerAdmin();
 }
 async function uploadGradeImg() {
   const inp = $('gImgFile');
@@ -205,7 +268,7 @@ function renderStudents() {
         return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:6px 0">
           <small style="color:var(--muted)">${esc(s.timestamp)}</small>
           <b>${esc(bookLabel(s.classId))} · ${esc(lessonLabelOf(s.classId, s.lessonId))}</b>
-          ${graded ? `<span class="pill reviewed">✅ ${esc(s.score)} 分</span>` : '<span class="pill new">待評分</span>'}
+          ${graded ? `<span class="pill reviewed">✅ ${esc(s.score)}${/^\d+$/.test(String(s.score)) ? ' 分' : ''}</span>` : '<span class="pill new">待評分</span>'}
           <button class="btn btn-ghost btn-sm" onclick="playSub('${esc(s.fileId)}', this)">▶ 播放</button>
           <span class="playerHolder"></span>
           <button class="btn btn-ghost btn-sm" onclick="gradeSub(${s._row})">✍ 評分</button>

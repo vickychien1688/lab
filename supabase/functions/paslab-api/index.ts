@@ -341,6 +341,34 @@ async function deleteSubmission(d: any) {
   await q(sb.from("paslab_submissions").delete().eq("id", Number(d.row)).select());
   return { ok: true };
 }
+// ---------- 評語圖庫（storage: paslab-audio/stickers/） ----------
+async function stickers() {
+  const { data, error } = await sb.storage.from("paslab-audio").list("stickers", {
+    limit: 200, sortBy: { column: "created_at", order: "desc" },
+  });
+  if (error) return { ok: false, error: error.message };
+  const out = (data || []).filter((f: any) => f.name && !f.name.startsWith(".")).map((f: any) => ({
+    name: f.name,
+    url: sb.storage.from("paslab-audio").getPublicUrl("stickers/" + f.name).data.publicUrl,
+  }));
+  return { ok: true, stickers: out };
+}
+async function uploadSticker(d: any) {
+  if (!d.audio) return { ok: false, error: "沒有圖片資料" };
+  const base = safeName(d.filename || "sticker.png");
+  const path = `stickers/${Date.now()}_${base}`;
+  const bytes = b64bytes(String(d.audio));
+  const up = await sb.storage.from("paslab-audio").upload(path, bytes.buffer as ArrayBuffer, {
+    contentType: String(d.mime || "image/png"),
+  });
+  if (up.error) return { ok: false, error: up.error.message };
+  return { ok: true, url: sb.storage.from("paslab-audio").getPublicUrl(path).data.publicUrl };
+}
+async function deleteSticker(d: any) {
+  await sb.storage.from("paslab-audio").remove(["stickers/" + String(d.name || "")]);
+  return { ok: true };
+}
+
 // ---------- ElevenLabs 文字轉語音 ----------
 async function elevenKey(): Promise<string> {
   const rows = await q(sb.from("paslab_config").select("value").eq("key", "elevenApiKey"));
@@ -454,6 +482,9 @@ Deno.serve(async (req) => {
       case "deleteStudent": return json(await deleteStudent(d));
       case "saveAssignment": return json(await saveAssignment(d));
       case "deleteAssignment": return json(await deleteAssignment(d));
+      case "stickers": return json(await stickers());
+      case "uploadSticker": return json(isAdmin ? await uploadSticker(d) : PERM_ERR);
+      case "deleteSticker": return json(isAdmin ? await deleteSticker(d) : PERM_ERR);
       case "tts": return json(await tts(d));
       case "hasElevenKey": return json({ ok: true, configured: !!(await elevenKey()) });
       case "saveElevenKey": return json(isAdmin ? await saveElevenKey(d) : PERM_ERR);

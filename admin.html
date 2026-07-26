@@ -154,6 +154,14 @@
         <button class="btn btn-primary" onclick="saveElevenKey()">儲存 Key</button>
         <p id="elevenMsg" class="status"></p>
       </div>
+      <div id="stickerCard">
+        <hr style="border-color:var(--line);margin:24px 0">
+        <div class="title-badge">🖼 評語圖庫</div>
+        <p class="hint">上傳獎勵貼紙、可愛圖案，老師評分時可以直接從圖庫挑一張附在評語旁（可一次選多張上傳）。</p>
+        <input type="file" id="stickerFile" accept="image/*" multiple onchange="uploadStickers()" style="padding:8px">
+        <p id="stickerMsg" class="status"></p>
+        <div id="stickerGrid" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px"></div>
+      </div>
       <hr style="border-color:var(--line);margin:24px 0">
       <p class="hint">資料與音檔存放在 Supabase（Our Reading Space / english-hq 專案）：學生錄音在 paslab-rec、示範音檔在 paslab-audio，資料表以 paslab_ 開頭。</p>
     </div>
@@ -165,6 +173,6 @@
   </div>
 
   <script src="assets/config.js?v=20260724b"></script>
-  <script src="assets/admin.js?v=20260726c"></script>
+  <script src="assets/admin.js?v=20260726d"></script>
 </body>
 </html>
