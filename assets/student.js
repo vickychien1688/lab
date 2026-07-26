@@ -4,6 +4,14 @@
   const classId = qs.get('class') || 'G7';
   const lessonParam = qs.get('lesson');
   const assignParam = qs.get('assign');
+  // LINE 跳外部瀏覽器時，登入身分會放在網址參數 stu 裡帶過來（兩個瀏覽器的儲存空間不互通）
+  try {
+    const stuParam = qs.get('stu');
+    if (stuParam) {
+      const obj = JSON.parse(decodeURIComponent(escape(atob(stuParam))));
+      if (obj && obj.studentId) localStorage.setItem('pas_student', JSON.stringify(obj));
+    }
+  } catch (e) {}
   const STU = (() => { try { return JSON.parse(localStorage.getItem('pas_student') || 'null'); } catch (e) { return null; } })();
 
   const el = id => document.getElementById(id);
@@ -25,7 +33,10 @@
   (function warnInApp() {
     if (!inApp()) return;
     // LINE 支援 openExternalBrowser=1：點連結直接跳外部瀏覽器開啟同一頁
+    // 連結裡同時帶上登入身分（stu 參數），到了 Safari/Chrome 名字就自動帶入
     const extUrl = new URL(location.href);
+    if (STU) { try { extUrl.searchParams.set('stu', btoa(unescape(encodeURIComponent(JSON.stringify(STU))))); } catch (e) {} }
+    const copyUrl = extUrl.href;
     extUrl.searchParams.set('openExternalBrowser', '1');
     const b = el('inappWarn');
     b.innerHTML = '⚠️ <b>你正在用 LINE 開啟，無法錄音！</b><br>' +
@@ -38,14 +49,14 @@
       let ok = false;
       try {
         const ta = document.createElement('textarea');
-        ta.value = location.href;
+        ta.value = copyUrl;
         ta.style.position = 'fixed'; ta.style.opacity = '0';
         document.body.appendChild(ta);
         ta.select(); ta.setSelectionRange(0, 99999);
         ok = document.execCommand('copy');
         document.body.removeChild(ta);
       } catch (e) {}
-      if (!ok && navigator.clipboard) { navigator.clipboard.writeText(location.href).catch(() => {}); ok = true; }
+      if (!ok && navigator.clipboard) { navigator.clipboard.writeText(copyUrl).catch(() => {}); ok = true; }
       c.innerText = '✅ 已複製';
       alert('✅ 網址已經複製好了！\n\n接下來：\n1. 打開 Safari（或 Chrome）\n2. 在網址列長按 →「貼上並前往」\n就會看到錄音畫面囉。');
     };
@@ -75,7 +86,12 @@
 
   function switchLesson() {
     const l = currentLesson();
-    el('lessonText').innerText = l.text || '';
+    // 逐句課文：一載入就切好句子（開始跟讀後會逐句亮螢光筆）
+    const mk = parseMarks(l.marks);
+    if (String(l.shadowMode).toLowerCase() === 'yes' && mk.length) {
+      SENT_SPANS = prepareSentences(mk.length);
+    } else { SENT_SPANS = null; }
+    if (!SENT_SPANS) el('lessonText').innerText = l.text || '';
     el('audioPlayer').classList.add('hidden');
     el('uploadBtn').classList.add('hidden');
     // 音檔直接串流（CDN 或同網域檔案），不再等整包下載
@@ -190,7 +206,7 @@
   }
   async function runShadow(a, marks, mult) {
     shadowAbort = false;
-    SENT_SPANS = prepareSentences(marks.length);
+    if (!SENT_SPANS) SENT_SPANS = prepareSentences(marks.length);
     let start = 0;
     for (let i = 0; i < marks.length; i++) {
       if (shadowAbort) return;
@@ -225,6 +241,18 @@
     });
   }
   function sleep(ms) { return new Promise(r => { shadowTimer = setTimeout(r, ms); }); }
+
+  // 音檔播放時，依時間自動亮到對應的句子（示範引讀也會亮）
+  el('teacherAudio').addEventListener('timeupdate', () => {
+    if (!SENT_SPANS) return;
+    const a = el('teacherAudio');
+    if (a.paused) return;
+    const l = currentLesson(); if (!l) return;
+    const mk = parseMarks(l.marks); if (!mk.length) return;
+    let i = mk.findIndex(m => a.currentTime < m);
+    if (i === -1) i = mk.length - 1;
+    highlightSent(i);
+  });
 
   el('uploadBtn').onclick = async () => {
     const btn = el('uploadBtn');
