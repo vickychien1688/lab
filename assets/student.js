@@ -122,9 +122,10 @@
 
       if (!tSource) {
         tSource = audioCtx.createMediaElementSource(tAudio);
-        tSource.connect(dest);                 // 老師音檔混入錄音
-        tSource.connect(audioCtx.destination); // 同時放給學生聽
+        tSource.connect(audioCtx.destination); // 放給學生聽（只需接一次）
       }
+      tSource.connect(dest); // 老師音檔混入「這一次」的錄音通道（每次錄音都要重接！）
+      tAudio.volume = 1;
 
       drawWave();
 
