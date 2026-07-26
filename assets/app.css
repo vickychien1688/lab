@@ -230,6 +230,10 @@ audio { width: 100%; margin-top: 8px; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .card { animation: rise .35s ease both; }
 
+/* 逐句跟讀：目前這句的螢光筆標記 */
+.sentSpan { border-radius: 5px; padding: 1px 4px; transition: background .25s; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.sentNow { background: #ffe98a; color: #26313f; font-weight: 700; }
+
 @media (max-width: 640px) {
   body { padding: 16px 12px; }
   .card { padding: 20px 16px; }

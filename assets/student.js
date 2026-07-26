@@ -24,17 +24,30 @@
   const inApp = () => /\bLine\/[\d.]+/i.test(UA) || /FBAN|FBAV|FB_IAB|Instagram|Messenger|MicroMessenger/i.test(UA);
   (function warnInApp() {
     if (!inApp()) return;
-    const steps = isIOS()
-      ? '📱 <b>iPhone</b>：點畫面<b>右下角</b>的分享圖示，選「<b>用 Safari 開啟</b>」'
-      : '🤖 <b>Android</b>：點右上角選單「⋮」，選「<b>用其他瀏覽器開啟</b>」';
+    // LINE 支援 openExternalBrowser=1：點連結直接跳外部瀏覽器開啟同一頁
+    const extUrl = new URL(location.href);
+    extUrl.searchParams.set('openExternalBrowser', '1');
     const b = el('inappWarn');
-    b.innerHTML = '⚠️ <b>你正在用 LINE 開啟，通常無法錄音！</b><br>請改用手機瀏覽器（Safari／Chrome）：<br>' + steps +
-      '<br>或按 <button id="copyUrlBtn" class="btn" style="background:#c19a3d;color:#fff;padding:6px 12px;font-size:13px;margin-top:8px">📋 複製網址</button> 再貼到瀏覽器網址列打開。';
+    b.innerHTML = '⚠️ <b>你正在用 LINE 開啟，無法錄音！</b><br>' +
+      `<a href="${extUrl.href}" class="btn" style="display:inline-block;background:#0e2038;color:#fff;padding:10px 16px;font-size:15px;margin:10px 6px 4px 0;border-radius:10px;text-decoration:none">🚀 一鍵用瀏覽器開啟（推薦）</a>` +
+      '<button id="copyUrlBtn" class="btn" style="background:#c19a3d;color:#fff;padding:10px 14px;font-size:14px;margin-top:4px;border-radius:10px">📋 複製網址</button>';
     b.classList.remove('hidden');
     const c = el('copyUrlBtn');
-    if (c) c.onclick = async () => {
-      try { await navigator.clipboard.writeText(location.href); c.innerText = '✅ 已複製'; }
-      catch (e) { prompt('複製這個網址，貼到 Safari／Chrome：', location.href); }
+    if (c) c.onclick = () => {
+      // 按下的瞬間就真的複製（隱藏文字框 + execCommand，LINE 內也有效）
+      let ok = false;
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = location.href;
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select(); ta.setSelectionRange(0, 99999);
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch (e) {}
+      if (!ok && navigator.clipboard) { navigator.clipboard.writeText(location.href).catch(() => {}); ok = true; }
+      c.innerText = '✅ 已複製';
+      alert('✅ 網址已經複製好了！\n\n接下來：\n1. 打開 Safari（或 Chrome）\n2. 在網址列長按 →「貼上並前往」\n就會看到錄音畫面囉。');
     };
   })();
 
@@ -139,6 +152,7 @@
 
   function stopRecording(msg) {
     shadowAbort = true;
+    highlightSent(null); // 收掉螢光筆
     if (shadowTimer) { clearTimeout(shadowTimer); shadowTimer = null; }
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     el('teacherAudio').pause();
@@ -153,17 +167,40 @@
     return String(s || '').split(',').map(x => parseFloat(x.trim()))
       .filter(x => !isNaN(x) && x > 0).sort((a, b) => a - b);
   }
+  // 把課文切成句子並轉成可反白的區塊（優先照「行」切；行數對不上再照句號切）
+  let SENT_SPANS = null;
+  function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+  function prepareSentences(n) {
+    const text = (currentLesson().text || '');
+    let parts = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    if (parts.length !== n) {
+      const m = text.match(/[^.!?\n]+[.!?]+["'）)]?/g);
+      if (m && m.length === n) parts = m.map(s => s.trim());
+    }
+    if (!parts.length) return null;
+    const box = el('lessonText');
+    box.innerHTML = parts.map((s, i) => `<span class="sentSpan" data-i="${i}">${escHtml(s)}</span>`).join('<br>');
+    return box.querySelectorAll('.sentSpan');
+  }
+  function highlightSent(i) {
+    if (!SENT_SPANS) return;
+    SENT_SPANS.forEach(sp => sp.classList.remove('sentNow'));
+    const sp = (i != null) ? SENT_SPANS[i] : null;
+    if (sp && sp.scrollIntoView) { sp.classList.add('sentNow'); sp.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  }
   async function runShadow(a, marks, mult) {
     shadowAbort = false;
+    SENT_SPANS = prepareSentences(marks.length);
     let start = 0;
     for (let i = 0; i < marks.length; i++) {
       if (shadowAbort) return;
       const end = marks[i];
+      highlightSent(i);
       el('status').innerText = `▶ 播放第 ${i + 1}/${marks.length} 句…`;
       await playSeg(a, start, end);
       if (shadowAbort) return;
       const gap = Math.max((end - start) * mult, 0.8);
-      el('status').innerText = `🎤 換你唸！(${i + 1}/${marks.length})`;
+      el('status').innerText = `🎤 換你唸這句！(${i + 1}/${marks.length})`;
       await sleep(gap * 1000);
       start = end;
     }
