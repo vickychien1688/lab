@@ -89,7 +89,7 @@
     // 逐句課文：一載入就切好句子（開始跟讀後會逐句亮螢光筆）
     const mk = parseMarks(l.marks);
     if (String(l.shadowMode).toLowerCase() === 'yes' && mk.length) {
-      SENT_SPANS = prepareSentences(mk.length);
+      SENT_SPANS = prepareSentences(mk);
     } else { SENT_SPANS = null; }
     if (!SENT_SPANS) el('lessonText').innerText = l.text || '';
     el('audioPlayer').classList.add('hidden');
@@ -194,20 +194,56 @@
     return String(s || '').split(',').map(x => parseFloat(x.trim()))
       .filter(x => !isNaN(x) && x > 0).sort((a, b) => a - b);
   }
-  // 把課文切成句子並轉成可反白的區塊（優先照「行」切；行數對不上再照句號切）
+  // 把課文切成句子並轉成可反白的區塊。行數/句數與分句點數相符就直接用；
+  // 對不上時自動依「每段時長 ∝ 字數」切塊對齊（老師課文不必手動分行）
   let SENT_SPANS = null;
   function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-  function prepareSentences(n) {
-    const text = (currentLesson().text || '');
-    let parts = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
-    if (parts.length !== n) {
-      const m = text.match(/[^.!?\n]+[.!?]+["'）)]?/g);
-      if (m && m.length === n) parts = m.map(s => s.trim());
-    }
-    if (!parts.length) return null;
+  function renderSpans(parts, sep) {
     const box = el('lessonText');
-    box.innerHTML = parts.map((s, i) => `<span class="sentSpan" data-i="${i}">${escHtml(s)}</span>`).join('<br>');
+    box.innerHTML = parts.map((s, i) => `<span class="sentSpan" data-i="${i}">${escHtml(s)}</span>`).join(sep);
     return box.querySelectorAll('.sentSpan');
+  }
+  function prepareSentences(marks) {
+    const n = marks.length;
+    const text = (currentLesson().text || '');
+    const lines = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    if (lines.length === n) return renderSpans(lines, '<br>');
+    const m = text.match(/[^.!?\n]+[.!?]+["'”’）)]?/g);
+    if (m && m.length === n) return renderSpans(m.map(s => s.trim()), '<br>');
+    const auto = autoChunks(text, marks);
+    return auto ? renderSpans(auto, ' ') : null;
+  }
+  // 自動對齊：每段音檔的時長和唸的字數大致成正比，依比例推算每段唸到哪裡，
+  // 切點就近吸附到標點（句號優先、逗號次之），把課文切成 n 塊
+  function autoChunks(text, marks) {
+    const n = marks.length;
+    const words = String(text || '').split(/\s+/).filter(Boolean);
+    if (n < 2 || words.length < n) return null;
+    const durs = marks.map((mk, i) => mk - (i ? marks[i - 1] : 0));
+    const total = durs.reduce((a, b) => a + b, 0);
+    if (!(total > 0)) return null;
+    const cum = []; let c = 0;
+    words.forEach(w => { c += w.length + 1; cum.push(c); });
+    const charTot = c;
+    const endW = /[.!?]["'”’）)]?$/, midW = /[,;:、–—-]["'”’）)]?$/;
+    const chunks = []; let wi = 0; let t = 0;
+    for (let i = 0; i < n - 1; i++) {
+      t += durs[i];
+      const target = charTot * (t / total);
+      let ti = wi;
+      while (ti < words.length - 1 && cum[ti] < target) ti++;
+      const hi = words.length - 1 - (n - 2 - i); // 後面每段至少留一個字
+      ti = Math.min(Math.max(ti, wi), hi);
+      let best = ti, bestScore = 0;
+      for (let j = Math.max(wi, ti - 2); j <= Math.min(hi, ti + 2); j++) {
+        const s = endW.test(words[j]) ? 3 : (midW.test(words[j]) ? 2 : 0);
+        if (s > bestScore || (s === bestScore && Math.abs(j - ti) < Math.abs(best - ti))) { best = j; bestScore = s; }
+      }
+      chunks.push(words.slice(wi, best + 1).join(' '));
+      wi = best + 1;
+    }
+    chunks.push(words.slice(wi).join(' '));
+    return chunks;
   }
   function highlightSent(i) {
     if (!SENT_SPANS) return;
@@ -217,7 +253,7 @@
   }
   async function runShadow(a, marks, mult) {
     shadowAbort = false;
-    if (!SENT_SPANS) SENT_SPANS = prepareSentences(marks.length);
+    if (!SENT_SPANS) SENT_SPANS = prepareSentences(marks);
     let start = 0;
     for (let i = 0; i < marks.length; i++) {
       if (shadowAbort) return;
